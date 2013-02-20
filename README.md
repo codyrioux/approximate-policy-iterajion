@@ -2,7 +2,7 @@
 
 An implementation of Approximate Policy Iteration (API) from the paper Lagoudakis et. al. 2003.
 
-This algorithm approximates a policy for solving very large Markov Decision Processes (MDP)
+This algorithm approximates a policy for approximating solutions to very large Markov Decision Processes (MDP)
 in a parallel fashion. I plan on using it for part of a larger project, however this component itself is
 very reusable so I factored it out into a library.
 
