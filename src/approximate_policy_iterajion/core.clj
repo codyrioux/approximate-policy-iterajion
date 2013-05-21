@@ -14,35 +14,52 @@
    Examples:
    (statistically-significant? 0.05 identity (range 1 10) 15)"
   [score p-threshold samples target-sample]
-  (>= p-threshold (:p-value(stats/t-test 
+  (>= p-threshold (:p-value (stats/t-test 
                              (map score samples) 
                              :mu (score target-sample)))))
 
-(defn- policy
-  "Executes the policy on the corresponding state and determines a proper action."
-  [sp model state]
+(defn policy
+  "Executes the policy on the corresponding state and determines a proper action.
+   Generates all possible actions using sp, then maps these actions to their state using m
+   It then  classifies each as either positive 1.0 or negative -1.0, placing them in a tuple.
+
+   Arguments: 
+   feature-extractor : A feature extractor function that takes a state and returns a set of features for the learner.
+   sp                : A function that takes a state and returns all possible actions.
+   m                 : A generative model that takes (s, a) and returns a new state.
+   model             : An svm-clj model trained to implement the policy.
+   state             : The current state to use as a base for the next action.
+
+   TODO: Currently runs on the assumption that at least one state will be classified as 1.0
+   if this condition does not hold rand-nth will throw an IndexOutOfBoundsException.
+
+   Returns: The next action as decided by the policy, randomly selected if there are multiple positive."
+  [feature-extractor sp m model state]
   (->>
     (sp state)
-    (map #(identity [(predict model state) [state %1]]))
+    (map #(m state %1))
+    (map #(vec [(predict model (feature-extractor state)) %1]))
     (filter #(= 1.0 (first %1)))
     (rand-nth)
-    (second) 
     (second)))
 
 (defn- calculate-qk
   "Arguments:
    m  : Generative model a function that takes s, a.
    s  : A state, paired with the action.
-   a  : An action, paired with the state.
+   a  : An action, paired with the state, represents the initial action for this trajectory.
    t  : The length of each trajectory.
-   y  : Discount factor. 0 < y <= 1"
-  [m s a t y]
+   y  : Discount factor. 0 < y <= 1
+   pi : A policy function that takes a state and returns a new state.
+   
+   Returns: Estimated value for the trajectory."
+  [m s a t y pi]
   (let [[sprime r] (m s a)]
-    (loop [m m, s sprime, a a, t t, qk r, y y]
+    (loop [s sprime, t t, qk r, y y]
       (cond 
         (= 0 t) qk
-        :else (let [[sprime r] (m s a)]
-                (recur m sprime, (policy sprime) (- t 1) (+ qk (* (Math/pow y t) r)) y))))))
+        :else (let [[sprime r] (m s (pi sprime))]
+                (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y))))))
 
 (defn rollout
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
@@ -51,51 +68,67 @@
    Arguments:
    m  : Generative model a function that takes s, a and a seed integer.
    s  : A state, paired with the action.
-   a  : An action, paired with the state.
+   a  : An action, paired with the state, represents the initial action for this trajectory.
    y  : Discount factor. 0 < y <= 1
    pi : A policy.
    k  : Number of trajectories.
    t  : The length of each trajectory.
 
    Returns:
-   A tuple of the form [[state action] approximated-value]"
+   A tuple of the form [new-state approximated-value]"
   [m, s, a, y, pi, k, t]
-  [[s, a] (* (/ 1 k) (apply + (pmap (fn [_] (calculate-qk m s a y)) (range 0 k))))])
+  [(m s a) (* (/ 1 k) (reduce + (pmap (fn [_] (calculate-qk m s a y pi)) (range 0 k))))])
 
 (defn- get-positive-samples
-  "Takes a series of rollout scores and returns a set containing a single positive training example."
-  [samples a*]
+  "Takes a series of rollout scores and returns a set containing a single positive training example.
+   
+   samples: A seq of rollout examples where the second element is the score.
+   a*:      The optimal approximated value of the set."
+  [feature-extractor samples a*]
   (let [target-sample (first (filter #(= a* (second %1)) samples))
         significant (statistically-significant? second 0.05 samples target-sample)]
-    (if significant #{[1 target-sample]} #{})))
+    (if significant #{[1.0 (feature-extractor (first target-sample))]} #{})))
 
-(defn- get-negative-samples
-  "Takes a series of rollout scores and returns a set containing all the negative training examples."
-  [samples]
+(defn get-negative-samples
+  "Takes a series of rollout scores and returns a set containing all the negative training examples.
+   Filtering below the mean ensures that regardless of wether or not a* is significant only negative
+   significant examples are returned."
+  [feature-extractor samples]
   (let [sample-mean (/ (reduce + (map second samples)) (count samples))]
     (->>
       (filter #(> sample-mean (second %1)) samples)
       (filter #(statistically-significant? second 0.05 samples %1))
-      (map #(identity [-1 %1]))
+      (map #(vec [-1.0 (feature-extractor (first %1))]))
       (set))))
 
 (defn api
-  " The primary function for approximate policy iteration.
+  "The primary function for approximate policy iteration.
+
+   For each state generated by dp, and each action for that state generated by sp
+   performs a rollout, stores each estimated value in qpi. Rollout: [sprime value]
+   Then takes the maximum estimated value and stores it in a*.
+   Then extracts the positive, negative training examples, unions them with the current ones.
+   Terminates when the policy converges.
+
+   The initial policy is to randomly select an action, this is in effect only on the first iteration
+   before training examples are generated.
+
    Arguments:
    m  : Generative model.
-   dp : A source of rollout states.
-   sp : A source of available actions for a state.
+   dp : A source of rollout states, a fn that returns a set of states.
+   sp : A source of available actions for a state, an fn that takes a state and returns actions.
    y  : Discount factor.
-   pi0: Initial policy.
+   pi : A policy function that takes a model and state, returns an action to take.
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.
+   fe : A function that extracts features from a state. {1 feature1, 2 feature2, ...}
 
-   Returns: A clj-svm model containing a classifier implementing the learned policy."
-  [m dp sp y pi0 k t]
-  (loop [model nil ts #{} tsi-1 nil]
+   Returns: A function pi that takes (sp m state) and returns an action."
+  [m dp sp y pi0 k t fe]
+  (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil]
     (cond
-      (= tsi-1 ts) model
-      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m s a y pi0 k t)))) 
+      (= tsi-1 ts) (partial (train-model ts))
+      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m s a y pi k t pi)))) 
                   a* (max (map second qpi))
-                  next-ts (union ts (get-positive-samples qpi) (get-negative-samples qpi)) ]
-              (recur (train-model next-ts) next-ts ts)))))
+                  next-ts (union ts (get-positive-samples fe qpi a*) (get-negative-samples fe qpi)) ]
+              (recur (partial pi0 (train-model next-ts) sp m) next-ts ts)))))
