@@ -77,7 +77,7 @@
    Returns:
    A tuple of the form [new-state approximated-value]"
   [m, s, a, y, pi, k, t]
-  [(m s a) (* (/ 1 k) (reduce + (pmap (fn [_] (calculate-qk m s a y pi)) (range 0 k))))])
+  [s (* (/ 1 k) (reduce + (pmap (fn [_] (calculate-qk m s a y pi)) (range 0 k))))])
 
 (defn- get-positive-samples
   "Takes a series of rollout scores and returns a set containing a single positive training example.
