@@ -12,7 +12,7 @@
    target-sample  : The sample for which we would like to determine statistically significant difference.
    
    Examples:
-   (statistically-significant? 0.05 identity (range 1 10) 15)"
+   (statistically-significant? identity 0.05 (range 1 10) 15)"
   [score p-threshold samples target-sample]
   (>= p-threshold (:p-value (stats/t-test 
                              (map score samples) 
@@ -30,18 +30,14 @@
    model             : An svm-clj model trained to implement the policy.
    state             : The current state to use as a base for the next action.
 
-   TODO: Currently runs on the assumption that at least one state will be classified as 1.0
-   if this condition does not hold rand-nth will throw an IndexOutOfBoundsException.
+   If no action is classified as a positive example then it will select a random action.
 
-   Returns: The next action as decided by the policy, randomly selected if there are multiple positive."
-  [feature-extractor sp m model state]
-  (->>
-    (sp state)
-    (map #(m state %1))
-    (map #(vec [(predict model (feature-extractor state)) %1]))
-    (filter #(= 1.0 (first %1)))
-    (rand-nth)
-    (second)))
+   Returns: The next action as decided by the policy,
+   randomly selected if there are multiple positive."
+  [feature-extractor model sp m state]
+  (let [actions
+        (filter #(= 1.0 (predict model (feature-extractor (first (m state %1))))) (sp state))]
+    (if (> (count actions) 0) (rand-nth actions) (rand-nth (sp state)))))
 
 (defn- calculate-qk
   "Arguments:
@@ -61,7 +57,7 @@
         :else (let [[sprime r] (m s (pi sprime))]
                 (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y))))))
 
-(defn rollout
+(defn- rollout
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
    is that the state space for our Markov Decision Process (MDP) is too large to compute exactly.
 
@@ -77,7 +73,7 @@
    Returns:
    A tuple of the form [new-state approximated-value]"
   [m, s, a, y, pi, k, t]
-  [s (* (/ 1 k) (reduce + (pmap (fn [_] (calculate-qk m s a y pi)) (range 0 k))))])
+  [(first (m s a)) (* (/ 1 k) (reduce + (pmap (fn [_] (calculate-qk m s a t y pi)) (range 0 k))))])
 
 (defn- get-positive-samples
   "Takes a series of rollout scores and returns a set containing a single positive training example.
@@ -89,7 +85,7 @@
         significant (statistically-significant? second 0.05 samples target-sample)]
     (if significant #{[1.0 (feature-extractor (first target-sample))]} #{})))
 
-(defn get-negative-samples
+(defn- get-negative-samples
   "Takes a series of rollout scores and returns a set containing all the negative training examples.
    Filtering below the mean ensures that regardless of wether or not a* is significant only negative
    significant examples are returned."
@@ -115,20 +111,21 @@
 
    Arguments:
    m  : Generative model.
-   dp : A source of rollout states, a fn that returns a set of states.
+   dp : A source of rollout states, a fn that returns a set of states. (dp)
    sp : A source of available actions for a state, an fn that takes a state and returns actions.
+        (sp state)
    y  : Discount factor.
-   pi : A policy function that takes a model and state, returns an action to take.
+   pi : A policy function that takes a model and state, returns an action.
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.
    fe : A function that extracts features from a state. {1 feature1, 2 feature2, ...}
 
-   Returns: A function pi that takes (sp m state) and returns an action."
+   Returns: A function pi that takes state and returns an action."
   [m dp sp y pi0 k t fe]
   (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil]
     (cond
-      (= tsi-1 ts) (partial (train-model ts))
-      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m s a y pi k t pi)))) 
-                  a* (max (map second qpi))
+      (= tsi-1 ts) pi
+      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m s a y pi k t)))) 
+                  a* (apply max (map second qpi))
                   next-ts (union ts (get-positive-samples fe qpi a*) (get-negative-samples fe qpi)) ]
               (recur (partial pi0 (train-model next-ts) sp m) next-ts ts)))))
