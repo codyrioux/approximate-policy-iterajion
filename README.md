@@ -27,8 +27,7 @@ In this example a state will be a number, and an action will be a number as well
 ```
 
 First we need a generative model that will take state and action pairs, and return the new state `sprime` and a reward `r`.
-To generate sprime we add s + a
-To generate a reward we compute 1 / (|goal - (s + a)\) + 0.01)
+To generate sprime we add `s + a` and to generate a reward we compute `1 / (|goal - (s + a)\) + 0.01)`
 
 ```clojure
 (defn m
@@ -45,7 +44,7 @@ Now we need a function to generate a bunch of starting states. For our problem w
   "0 to goal * 2 for starting states"
   []
   (range 0 (* goal 2)))
-```clojure
+```
 
 Now we require a function `sp` that generates actions for a given state. In this example actions available are the same
 no matter the state, however in a real world problem actions will vary by state. In this case we will allow the user to
@@ -88,10 +87,10 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 3
 ```
 
-All of this code is available in `sample.clj` and can be run simply by calling
+All of this code is available in `sample.clj` and can be run simply by calling:
 
 ```clojure
-(use 'approximate-policy-iterajion.sample)
+(use 'approximate-policy-iterajion.sample :reload-all)
 (def my-policy (create-api-policy 10 25))
 (my-policy 4)
 ```
