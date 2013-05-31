@@ -33,7 +33,7 @@
   {1 s
    2 (- goal s)
    3 (if (pos? s) 1 0)
-   4 (if (pos (- goal s) 1 0))
+   4 (if (pos? (- goal s)) 1 0)
    5 (if (> goal s) 1 0)
    })
 
