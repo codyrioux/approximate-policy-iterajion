@@ -37,7 +37,7 @@ To generate sprime we add `s + a` and to generate a reward we compute `1 / (|goa
 ```
 
 Now we need a function to generate a bunch of starting states. For our problem we will start at every number from
-0 to 10.
+0 to 20.
 
 ```clojure
 (defn dp
@@ -48,14 +48,14 @@ Now we need a function to generate a bunch of starting states. For our problem w
 
 Now we require a function `sp` that generates actions for a given state. In this example actions available are the same
 no matter the state, however in a real world problem actions will vary by state. In this case we will allow the user to
-add any number between -(goal / 2) and (goal / 2)
+add any number between `-(goal / 2) and (goal / 2)`
 
 ```clojure
 (defn sp
   "Can add or subtract up to half of the goal."
   [s]
   (range (* -1 (/ goal 2)) (/ goal 2)))
-```cloure
+```
 
 Lastly we require a feature extraction function in order to teach our learner. approximate-policy-iterajion uses svm-clj
 under the hood so our features are maps of increasing numbers 1..n to the feature value.
