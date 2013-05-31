@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <title>Approximate-policy-iterajion by codyrioux</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>Approximate-policy-iterajion</h1>
+        <h2>A reinforcement learning algorithm for exploring large Markov decision processes (MDP) implemented in Clojure.</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/codyrioux/approximate-policy-iterajion/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/codyrioux/approximate-policy-iterajion/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/codyrioux/approximate-policy-iterajion" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <h1>
+<a name="approximate-policy-iterajion" class="anchor" href="#approximate-policy-iterajion"><span class="octicon octicon-link"></span></a>approximate-policy-iterajion</h1>
+
+<p>An implementation of Approximate Policy Iteration (API) from the paper Lagoudakis et. al. 2003.</p>
+
+<p>This is a reinforcement learning algorithm that exploits a classifier, in this case an svm, to select
+state and action pairs in a large state space.</p>
+
+<p>This algorithm approximates a policy for approximating solutions to very large Markov Decision Processes (MDP)
+in a parallel fashion. I plan on using it for part of a larger project, however this component itself is
+very reusable so I factored it out into a library.</p>
+
+<h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>Add the following dependency to your <code>project.clj</code> file.</p>
+
+<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.1.0"</span><span class="p">]</span>
+</pre></div>
+
+<p>All of the following code can be found in <code>sample.clj</code></p>
+
+<p>For our toy problem we will be defining a simple problem in which an agent attempts to reach the number 10 using addition.
+In this example a state will be a number, and an action will be a number as well (which gets added to the state).</p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="k">def </span><span class="nv">goal</span> <span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+<p>First we need a generative model that will take state and action pairs, and return the new state <code>sprime</code> and a reward <code>r</code>.
+To generate sprime we add <code>s + a</code> and to generate a reward we compute <code>1 / (|goal - (s + a)\) + 0.01)</code></p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">m</span>
+  <span class="s">"States and actions are added. Reward is 1 / (|(goal - (s + a))| + 0.01)"</span>
+  <span class="p">[</span><span class="nv">s</span> <span class="nv">a</span><span class="p">]</span>
+  <span class="p">[(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">)</span>  <span class="p">(</span><span class="nb">/ </span><span class="mi">1</span> <span class="p">(</span><span class="nb">+ </span><span class="mf">0.01</span> <span class="p">(</span><span class="nf">Math/abs</span> <span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">)))))</span> <span class="p">])</span>
+</pre></div>
+
+<p>Now we need a function to generate a bunch of starting states. For our problem we will start at every number from
+0 to 20.</p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">dp</span>
+  <span class="s">"0 to goal * 2 for starting states"</span>
+  <span class="p">[]</span>
+  <span class="p">(</span><span class="nb">range </span><span class="mi">0</span> <span class="p">(</span><span class="nb">* </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">)))</span>
+</pre></div>
+
+<p>Now we require a function <code>sp</code> that generates actions for a given state. In this example actions available are the same
+no matter the state, however in a real world problem actions will vary by state. In this case we will allow the user to
+add any number between <code>-(goal / 2) and (goal / 2)</code></p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">sp</span>
+  <span class="s">"Can add or subtract up to half of the goal."</span>
+  <span class="p">[</span><span class="nv">s</span><span class="p">]</span>
+  <span class="p">(</span><span class="nb">range </span><span class="p">(</span><span class="nb">* </span><span class="mi">-1</span> <span class="p">(</span><span class="nb">/ </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">))</span> <span class="p">(</span><span class="nb">/ </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">)))</span>
+</pre></div>
+
+<p>Lastly we require a feature extraction function in order to teach our learner. approximate-policy-iterajion uses svm-clj
+under the hood so our features are maps of increasing numbers 1..n to the feature value.</p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">features</span>
+  <span class="s">"Features are the value of the state and the difference from goal"</span>
+  <span class="p">[</span><span class="nv">s</span><span class="p">]</span>
+  <span class="p">{</span><span class="mi">1</span> <span class="nv">s</span>
+   <span class="mi">2</span> <span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">)</span>
+   <span class="mi">3</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">pos? </span><span class="nv">s</span><span class="p">)</span> <span class="mi">1</span> <span class="mi">0</span><span class="p">)</span>
+   <span class="mi">4</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">pos? </span><span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">))</span> <span class="mi">1</span> <span class="mi">0</span><span class="p">)</span>
+   <span class="mi">5</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">)</span> <span class="mi">1</span> <span class="mi">0</span><span class="p">)</span>
+   <span class="p">})</span>
+</pre></div>
+
+<p>Now that we have defined m, dp, sp, and features we can run approximate policy iteration with 10 rollouters per state,
+ and a trajectory length of 25 per rollout using a discount factor of 0.99.</p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
+
+<span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span><span class="p">)</span> <span class="mi">10</span> <span class="mi">25</span> <span class="nv">features</span><span class="p">))</span>
+
+<span class="c1">; We get some output from the underlying svm implementation</span>
+
+<span class="c1">; Now lets ask the policy for an action given our state s</span>
+<span class="p">(</span><span class="nf">api</span> <span class="mi">4</span><span class="p">)</span>
+<span class="mi">3</span>
+</pre></div>
+
+<p>All of this code is available in <code>sample.clj</code> and can be run simply by calling:</p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.sample</span> <span class="ss">:reload-all</span><span class="p">)</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">create-api-policy</span> <span class="mi">10</span> <span class="mi">25</span><span class="p">))</span>
+<span class="p">(</span><span class="nf">my-policy</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+
+<p>Now take this and build your own reinforcement learning solutions to problems. :D</p>
+
+<h2>
+<a name="todo" class="anchor" href="#todo"><span class="octicon octicon-link"></span></a>Todo</h2>
+
+<ul>
+<li>Unit Tests</li>
+<li>Agents for parallelism</li>
+<li>Explore using deep belief networks</li>
+</ul><h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>Copyright © 2013 Cody Rioux
+Distributed under the Eclipse Public License, the same as Clojure.</p>
+      </section>
+    </div>
+
+    
+  </body>
+</html>
