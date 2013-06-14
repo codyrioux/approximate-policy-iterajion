@@ -80,13 +80,13 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
    })
 ```
 
-Now that we have defined m, dp, sp, and features we can run approximate policy iteration with 10 rollouters per state,
- and a trajectory length of 25 per rollout using a discount factor of 0.99.
+Now that we have defined m, dp, sp, and features we can run approximate policy iteration with 300 rollouts per state,
+ and a trajectory length of 5 per rollout using a discount factor of 0.99.
 
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(api/api m reward dp sp 0.99 (partial api/policy features) 10 25 features))
+(api/api m reward dp sp 0.99 (partial api/policy features reward) 300 10 features))
 
 ; We get some output from the underlying svm implementation
 
@@ -99,8 +99,15 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 
 ```clojure
 (use 'approximate-policy-iterajion.sample :reload-all)
-(def my-policy (create-api-policy 10 25))
+(def my-policy (create-api-policy 300 10))
+(my-policy 0)
+;=> 4
 (my-policy 4)
+;=> 4 
+(my-policy 8)
+;=> 2
+(my-policy 10)
+;=> 0
 ```
 
 Now take this and build your own reinforcement learning solutions to problems. :D
