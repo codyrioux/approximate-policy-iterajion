@@ -46,26 +46,8 @@
    randomly selected if there are multiple positive."
   [feature-extractor model sp m state]
   (let [actions
-        (filter #(= 1.0 (predict model (feature-extractor (first (m state %1))))) (sp state))]
+        (filter #(= 1.0 (predict model (feature-extractor (m state %1)))) (sp state))]
     (if (> (count actions) 0) (rand-nth actions) (rand-nth (sp state)))))
-
-(defn- calculate-qk
-  "Arguments:
-   m  : Generative model a function that takes s, a.
-   s  : A state, paired with the action.
-   a  : An action, paired with the state, represents the initial action for this trajectory.
-   t  : The length of each trajectory.
-   y  : Discount factor. 0 < y <= 1
-   pi : A policy function that takes a state and returns a new state.
-   
-   Returns: Estimated value for the trajectory."
-  [m s a t y pi]
-  (let [[sprime r] (m s a)]
-    (loop [s sprime, t t, qk r, y y]
-      (cond 
-        (= 0 t) qk
-        :else (let [[sprime r] (m s (pi sprime))]
-                (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y))))))
 
 (defn- rollout
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
@@ -82,8 +64,13 @@
 
    Returns:
    A tuple of the form [new-state approximated-value]"
-  [m, s, a, y, pi, k, t]
-  [(first (m s a)) (* (/ 1 k) (reduce + (pmap (fn [_] (calculate-qk m s a t y pi)) (range 0 k))))])
+  [m, rw, s, a, y, pi, k, t]
+  [(m s a) (* (/ 1 k) (reduce + (pmap (fn [_] (let [sprime (m s a) r (rw sprime)]
+                                                        (loop [s sprime, t t, qk r, y y]
+                                                          (cond 
+                                                            (= 0 t) qk
+                                                            :else (let [sprime (m s (pi s)) r (rw sprime)]
+                                                                    (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y)))))) (range 0 k))))])
 
 (defn- get-positive-samples
   "Takes a series of rollout scores and returns a set containing a single positive training example.
@@ -112,6 +99,7 @@
 
    Arguments:
    m  : Generative model.
+   rw : Reward function, takes a state and returns a reward value.
    dp : A source of rollout states, a fn that returns a set of states. (dp)
    sp : A source of available actions for a state, an fn that takes a state and returns actions.
         (sp state)
@@ -122,11 +110,11 @@
    fe : A function that extracts features from a state. {1 feature1, 2 feature2, ...}
 
    Returns: A function pi that takes state and returns an action."
-  [m dp sp y pi0 k t fe]
+  [m rw dp sp y pi0 k t fe]
   (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil]
     (cond
       (= tsi-1 ts) pi
-      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m s a y pi k t)))) 
+      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
                   a* (apply max (map second qpi))
                   next-ts (union ts (get-positive-samples fe qpi a*) (get-negative-samples fe qpi)) ]
               (recur (partial pi0 (train-model next-ts) sp m) next-ts ts)))))

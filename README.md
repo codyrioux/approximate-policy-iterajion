@@ -31,9 +31,17 @@ To generate sprime we add `s + a` and to generate a reward we compute `1 / (|goa
 
 ```clojure
 (defn m
-  "States and actions are added. Reward is 1 / (|(goal - (s + a))| + 0.01)"
+  "States and actions are added."
   [s a]
-  [(+ s a)  (/ 1 (+ 0.01 (Math/abs (- goal (+ s a))))) ])
+  (+ s a))
+```
+
+Now a reward function.
+
+```clojure
+(defn reward
+  [s]
+  (/ 1 (+ 0.01 (Math/abs (- goal s)))))
 ```
 
 Now we need a function to generate a bunch of starting states. For our problem we will start at every number from
@@ -78,7 +86,7 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(api/api m dp sp 0.99 (partial api/policy features) 10 25 features))
+(api/api m reward dp sp 0.99 (partial api/policy features) 10 25 features))
 
 ; We get some output from the underlying svm implementation
 

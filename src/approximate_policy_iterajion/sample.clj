@@ -12,10 +12,15 @@
 
 ;; Experiment Functions
 
+(defn reward
+  "Reward is 1 / (|(goal - (s + a))| + 0.01)"
+  [s] 
+  (/ 1 (+ 0.01 (Math/abs (- goal s)))))
+
 (defn m
-  "States and actions are added. Reward is 1 / (|(goal - (s + a))| + 0.01)"
+  "States and actions are added."
   [s a]
-  [(+ s a)  (/ 1 (+ 0.01 (Math/abs (- goal (+ s a))))) ])
+  (+ s a))
 
 (defn dp
   "0 to goal * 2 for starting states"
@@ -43,4 +48,4 @@
   "Build a function that implements our policy.
    The returned function can be called with a state and will recommend an action."
   [trajectory-count trajectory-length]
-  (api/api m dp sp 0.99 (partial api/policy features) trajectory-count trajectory-length features))
+  (api/api m reward dp sp 0.99 (partial api/policy features) trajectory-count trajectory-length features))
