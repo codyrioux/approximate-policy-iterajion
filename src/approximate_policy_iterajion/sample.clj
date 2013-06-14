@@ -48,4 +48,4 @@
   "Build a function that implements our policy.
    The returned function can be called with a state and will recommend an action."
   [trajectory-count trajectory-length]
-  (api/api m reward dp sp 0.99 (partial api/policy features) trajectory-count trajectory-length features))
+  (api/api m reward dp sp 0.99 (partial api/policy features reward) trajectory-count trajectory-length features))

@@ -7,7 +7,7 @@
 
    The initial policy is to randomly select an action, this is in effect only on the first iteration
    before training examples are generated.
-   
+
    Call api with specified parameters to generate a policy function."
   (:require [incanter.stats :as stats])
   (:use [clojure.set]
@@ -17,16 +17,16 @@
   "Determines if the provided target-sample is statistically significant compared to all samples.  Arguments:
    p-threshold    : The p value threshold for the t-test. ex. 0.05 or 0.01
    score          : A function returning the score of a sample. Note if precomputed in a collection/hash
-                    this function could be first or :score for example.
+   this function could be first or :score for example.
    samples        : A collection of all of the samples.
    target-sample  : The sample for which we would like to determine statistically significant difference.
-   
+
    Examples:
    (statistically-significant? identity 0.05 (range 1 10) 15)"
   [score p-threshold samples target-sample]
   (>= p-threshold (:p-value (stats/t-test 
-                             (map score samples) 
-                             :mu (score target-sample)))))
+                              (map score samples) 
+                              :mu (score target-sample)))))
 
 (defn policy
   "Executes the policy on the corresponding state and determines a proper action.
@@ -35,19 +35,22 @@
 
    Arguments: 
    feature-extractor : A feature extractor function that takes a state and returns a set of features for the learner.
+   rw                : Reward function that takes a state and returns a reward.
    sp                : A function that takes a state and returns all possible actions.
    m                 : A generative model that takes (s, a) and returns a new state.
    model             : An svm-clj model trained to implement the policy.
    state             : The current state to use as a base for the next action.
 
-   If no action is classified as a positive example then it will select a random action.
+   The algorithm will take all positive samples and attempt to maximize reward.
+   If no actions are classified it attempts to maximize reward over all actions.
 
    Returns: The next action as decided by the policy,
    randomly selected if there are multiple positive."
-  [feature-extractor model sp m state]
-  (let [actions
-        (filter #(= 1.0 (predict model (feature-extractor (m state %1)))) (sp state))]
-    (if (> (count actions) 0) (rand-nth actions) (rand-nth (sp state)))))
+  [feature-extractor rw model sp m state]
+  (let [actions (filter #(= 1.0 (predict model (feature-extractor (m state %1)))) (sp state))
+        actions (if (> (count actions) 0) actions (sp state))
+        rw-actions (zipmap (map #( rw (m state %)) actions) actions)]
+    (rw-actions (reduce max (keys rw-actions)))))
 
 (defn- rollout
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
@@ -66,15 +69,15 @@
    A tuple of the form [new-state approximated-value]"
   [m, rw, s, a, y, pi, k, t]
   [(m s a) (* (/ 1 k) (reduce + (pmap (fn [_] (let [sprime (m s a) r (rw sprime)]
-                                                        (loop [s sprime, t t, qk r, y y]
-                                                          (cond 
-                                                            (= 0 t) qk
-                                                            :else (let [sprime (m s (pi s)) r (rw sprime)]
-                                                                    (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y)))))) (range 0 k))))])
+                                                (loop [s sprime, t t, qk r, y y]
+                                                  (cond 
+                                                    (= 0 t) qk
+                                                    :else (let [sprime (m s (pi s)) r (rw sprime)]
+                                                            (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y)))))) (range 0 k))))])
 
 (defn- get-positive-samples
   "Takes a series of rollout scores and returns a set containing a single positive training example.
-   
+
    samples: A seq of rollout examples where the second element is the score.
    a*:      The optimal approximated value of the set."
   [feature-extractor samples a*]
@@ -102,7 +105,7 @@
    rw : Reward function, takes a state and returns a reward value.
    dp : A source of rollout states, a fn that returns a set of states. (dp)
    sp : A source of available actions for a state, an fn that takes a state and returns actions.
-        (sp state)
+   (sp state)
    y  : Discount factor. [0, 1
    pi : A policy function that takes a model and state, returns an action.
    k  : The number of trajectories to compute on each rollout.
