@@ -60,9 +60,16 @@ In this example a state will be a number, and an action will be a number as well
 To generate sprime we add <code>s + a</code> and to generate a reward we compute <code>1 / (|goal - (s + a)\) + 0.01)</code></p>
 
 <div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">m</span>
-  <span class="s">"States and actions are added. Reward is 1 / (|(goal - (s + a))| + 0.01)"</span>
+  <span class="s">"States and actions are added."</span>
   <span class="p">[</span><span class="nv">s</span> <span class="nv">a</span><span class="p">]</span>
-  <span class="p">[(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">)</span>  <span class="p">(</span><span class="nb">/ </span><span class="mi">1</span> <span class="p">(</span><span class="nb">+ </span><span class="mf">0.01</span> <span class="p">(</span><span class="nf">Math/abs</span> <span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">)))))</span> <span class="p">])</span>
+  <span class="p">(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">))</span>
+</pre></div>
+
+<p>Now a reward function.</p>
+
+<div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">reward</span>
+  <span class="p">[</span><span class="nv">s</span><span class="p">]</span>
+  <span class="p">(</span><span class="nb">/ </span><span class="mi">1</span> <span class="p">(</span><span class="nb">+ </span><span class="mf">0.01</span> <span class="p">(</span><span class="nf">Math/abs</span> <span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">)))))</span>
 </pre></div>
 
 <p>Now we need a function to generate a bunch of starting states. For our problem we will start at every number from
@@ -103,7 +110,7 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 <div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
 
-<span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span><span class="p">)</span> <span class="mi">10</span> <span class="mi">25</span> <span class="nv">features</span><span class="p">))</span>
+<span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span><span class="p">)</span> <span class="mi">10</span> <span class="mi">25</span> <span class="nv">features</span><span class="p">))</span>
 
 <span class="c1">; We get some output from the underlying svm implementation</span>
 
