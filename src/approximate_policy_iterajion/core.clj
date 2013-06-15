@@ -33,6 +33,8 @@
    Generates all possible actions using sp, then maps these actions to their state using m
    It then  classifies each as either positive 1.0 or negative -1.0, placing them in a tuple.
 
+   Note: This is an example policy and you are encouraged to roll your own.
+
    Arguments: 
    feature-extractor : A feature extractor function that takes a state and returns a set of features for the learner.
    rw                : Reward function that takes a state and returns a reward.
@@ -83,7 +85,7 @@
   [feature-extractor samples a*]
   (let [target-sample (first (filter #(= a* (second %1)) samples))
         significant (statistically-significant? second 0.05 samples target-sample)]
-    (if significant #{[1.0 (feature-extractor (first target-sample))]} #{})))
+    (if significant [ [1.0 (feature-extractor (first target-sample))]] [])))
 
 (defn- get-negative-samples
   "Takes a series of rollout scores and returns a set containing all the negative training examples.
@@ -94,8 +96,7 @@
     (->>
       (filter #(> sample-mean (second %1)) samples)
       (filter #(statistically-significant? second 0.05 samples %1))
-      (map #(vec [-1.0 (feature-extractor (first %1))]))
-      (set))))
+      (map #(vec [-1.0 (feature-extractor (first %1))])))))
 
 (defn api
   "The primary function for approximate policy iteration.
@@ -114,10 +115,10 @@
 
    Returns: A function pi that takes state and returns an action."
   [m rw dp sp y pi0 k t fe]
-  (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil]
+  (loop [pi #(rand-nth (sp %)) ts [] tsi-1 nil]
     (cond
       (= tsi-1 ts) pi
       :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
                   a* (apply max (map second qpi))
-                  next-ts (union ts (get-positive-samples fe qpi a*) (get-negative-samples fe qpi)) ]
+                  next-ts (concat (get-positive-samples fe qpi a*) ( get-negative-samples fe qpi))]
               (recur (partial pi0 (train-model next-ts) sp m) next-ts ts)))))
