@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.2.1"]
+[apprpoximate-policy-iterajion "0.2.4"]
 ```
 
 All of the following code can be found in `sample.clj`
