@@ -1,4 +1,4 @@
-( defproject approximate-policy-iterajion "0.2.2"
+( defproject approximate-policy-iterajion "0.2.3"
   :description "An implementation of Approximate Policy Iteration algorithm in Lagoudakis et al. 2003."
   :url "https://www.github.com/codyrioux/approximate-policy-iterajion"
   :license {:name "Eclipse Public License"
