@@ -117,8 +117,8 @@
   [m rw dp sp y pi0 k t fe]
   (loop [pi #(rand-nth (sp %)) ts [] tsi-1 nil]
     (cond
-      (= tsi-1 ts) pi
+      (= (count tsi-1) (count ts)) pi
       :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
                   a* (apply max (map second qpi))
                   next-ts (concat (get-positive-samples fe qpi a*) ( get-negative-samples fe qpi))]
-              (recur (partial pi0 (train-model next-ts) sp m) next-ts ts)))))
+              (recur (partial pi0 (train-model next-ts) rw sp m) next-ts ts)))))
