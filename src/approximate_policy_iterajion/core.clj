@@ -9,9 +9,9 @@
    before training examples are generated.
 
    Call api with specified parameters to generate a policy function."
-  (:require [incanter.stats :as stats])
-  (:use [clojure.set]
-        [svm.core]))
+  (:require [incanter.stats :as stats]
+            [svm.core :as svm])
+  (:use [clojure.set]))
 
 (defn- statistically-significant?
   "Determines if the provided target-sample is statistically significant compared to all samples.  Arguments:
@@ -28,6 +28,32 @@
                               (map score samples) 
                               :mu (score target-sample)))))
 
+(defn- get-positive-samples
+  "Takes a series of rollout scores and returns a set containing a single positive training example.
+
+   samples: A seq of rollout examples where the second element is the score.
+   a*:      The optimal approximated value of the set."
+  [feature-extractor samples a*]
+  (let [target-sample (first (filter #(= a* (second %1)) samples))
+        significant (statistically-significant? second 0.05 samples target-sample)]
+    (if significant  #{[1.0 (feature-extractor (first target-sample))]} #{})))
+
+(defn- get-negative-samples
+  "Takes a series of rollout scores and returns a set containing all the negative training examples.
+   Filtering below the mean ensures that regardless of wether or not a* is significant only negative
+   significant examples are returned."
+  [feature-extractor samples]
+  (let [sample-mean (/ (reduce + (map second samples)) (count samples))]
+    (->>
+      (filter #(> sample-mean (second %1)) samples)
+      (filter #(statistically-significant? second 0.05 samples %1))
+      (map #(vec [-1.0 (feature-extractor (first %1))]))
+      (set))))
+
+(def kernel-types svm/kernel-types)
+(def svm-types svm/svm-types)
+(def predict svm/predict)
+
 (defn policy
   "Executes the policy on the corresponding state and determines a proper action.
    Generates all possible actions using sp, then maps these actions to their state using m
@@ -40,7 +66,7 @@
    rw                : Reward function that takes a state and returns a reward.
    sp                : A function that takes a state and returns all possible actions.
    m                 : A generative model that takes (s, a) and returns a new state.
-   model             : An svm-clj model trained to implement the policy.
+   model             : A svm-clj model.
    state             : The current state to use as a base for the next action.
 
    The algorithm will take all positive samples and attempt to maximize reward.
@@ -48,8 +74,8 @@
 
    Returns: The next action as decided by the policy,
    randomly selected if there are multiple positive."
-  [feature-extractor rw model sp m state]
-  (let [actions (filter #(= 1.0 (predict model (feature-extractor (m state %1)))) (sp state))
+  [feature-extractor rw sp m model state]
+  (let [actions (filter #(= 1.0 (svm/predict model (feature-extractor (m state %1)))) (sp state))
         actions (if (> (count actions) 0) actions (sp state))
         rw-actions (zipmap (map #( rw (m state %)) actions) actions)]
     (rw-actions (reduce max (keys rw-actions)))))
@@ -77,28 +103,6 @@
                                                     :else (let [sprime (m s (pi s)) r (rw sprime)]
                                                             (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y)))))) (range 0 k))))])
 
-(defn- get-positive-samples
-  "Takes a series of rollout scores and returns a set containing a single positive training example.
-
-   samples: A seq of rollout examples where the second element is the score.
-   a*:      The optimal approximated value of the set."
-  [feature-extractor samples a*]
-  (let [target-sample (first (filter #(= a* (second %1)) samples))
-        significant (statistically-significant? second 0.05 samples target-sample)]
-    (if significant  #{[1.0 (feature-extractor (first target-sample))]} #{})))
-
-(defn- get-negative-samples
-  "Takes a series of rollout scores and returns a set containing all the negative training examples.
-   Filtering below the mean ensures that regardless of wether or not a* is significant only negative
-   significant examples are returned."
-  [feature-extractor samples]
-  (let [sample-mean (/ (reduce + (map second samples)) (count samples))]
-    (->>
-      (filter #(> sample-mean (second %1)) samples)
-      (filter #(statistically-significant? second 0.05 samples %1))
-      (map #(vec [-1.0 (feature-extractor (first %1))]))
-      (set))))
-
 (defn api
   "The primary function for approximate policy iteration.
 
@@ -108,18 +112,19 @@
    dp : A source of rollout states, a fn that returns a set of states. (dp)
    sp : A source of available actions for a state, an fn that takes a state and returns actions.
    (sp state)
-   y  : Discount factor. [0, 1
+   y  : Discount factor. 0 to 1
    pi : A policy function that takes a model and state, returns an action.
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.
    fe : A function that extracts features from a state. {1 feature1, 2 feature2, ...}
+   options : Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
    Returns: A function pi that takes state and returns an action."
-  [m rw dp sp y pi0 k t fe]
+  [m rw dp sp y pi0 k t fe & options]
   (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil]
     (cond
       (= tsi-1 ts) pi
       :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
                   a* (apply max (map second qpi))
                   next-ts  (union ts  (get-positive-samples fe qpi a*)  (get-negative-samples fe qpi))]
-              (recur (partial pi0 (train-model next-ts) sp m) next-ts ts)))))
+              (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts)))))

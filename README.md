@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.2.4"]
+[apprpoximate-policy-iterajion "0.3.0"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -86,7 +86,7 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(def my-policy (api/api m reward dp sp 0.99 (partial api/policy features reward) 300 10 features)))
+(def my-policy (api/api m reward dp sp 0.99 (partial api/policy features reward sp m) 300 10 features)))
 
 ; We get some output from the underlying svm implementation
 
