@@ -45,7 +45,7 @@ very reusable so I factored it out into a library.</p>
 
 <p>Add the following dependency to your <code>project.clj</code> file.</p>
 
-<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.2.1"</span><span class="p">]</span>
+<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.3.0"</span><span class="p">]</span>
 </pre></div>
 
 <p>All of the following code can be found in <code>sample.clj</code></p>
@@ -110,13 +110,20 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 <div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
 
-<span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span> <span class="nv">reward</span><span class="p">)</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span><span class="p">))</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span> <span class="nv">reward</span> <span class="nv">sp</span> <span class="nv">m</span><span class="p">)</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span><span class="p">)))</span>
 
 <span class="c1">; We get some output from the underlying svm implementation</span>
 
 <span class="c1">; Now lets ask the policy for an action given our state s</span>
-<span class="p">(</span><span class="nf">api</span> <span class="mi">4</span><span class="p">)</span>
-<span class="mi">3</span>
+
+<span class="p">(</span><span class="nf">my-policy</span> <span class="mi">0</span><span class="p">)</span>
+<span class="c1">;=&gt; 4</span>
+<span class="p">(</span><span class="nf">my-policy</span> <span class="mi">4</span><span class="p">)</span>
+<span class="c1">;=&gt; 4 </span>
+<span class="p">(</span><span class="nf">my-policy</span> <span class="mi">8</span><span class="p">)</span>
+<span class="c1">;=&gt; 2</span>
+<span class="p">(</span><span class="nf">my-policy</span> <span class="mi">10</span><span class="p">)</span>
+<span class="c1">;=&gt; 0</span>
 </pre></div>
 
 <p>All of this code is available in <code>sample.clj</code> and can be run simply by calling:</p>
