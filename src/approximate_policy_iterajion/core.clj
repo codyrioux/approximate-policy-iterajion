@@ -13,6 +13,10 @@
             [svm.core :as svm])
   (:use [clojure.set]))
 
+(def kernel-types svm/kernel-types)
+(def svm-types svm/svm-types)
+(def predict svm/predict)
+
 (defn- statistically-significant?
   "Determines if the provided target-sample is statistically significant compared to all samples.  Arguments:
    p-threshold    : The p value threshold for the t-test. ex. 0.05 or 0.01
@@ -28,31 +32,27 @@
                               (map score samples) 
                               :mu (score target-sample)))))
 
-(defn- get-positive-samples
-  "Takes a series of rollout scores and returns a set containing a single positive training example.
-
-   samples: A seq of rollout examples where the second element is the score.
-   a*:      The optimal approximated value of the set."
-  [feature-extractor samples a*]
-  (let [target-sample (first (filter #(= a* (second %1)) samples))
-        significant (statistically-significant? second 0.05 samples target-sample)]
-    (if significant  #{[1.0 (feature-extractor (first target-sample))]} #{})))
-
-(defn- get-negative-samples
-  "Takes a series of rollout scores and returns a set containing all the negative training examples.
-   Filtering below the mean ensures that regardless of wether or not a* is significant only negative
-   significant examples are returned."
-  [feature-extractor samples]
-  (let [sample-mean (/ (reduce + (map second samples)) (count samples))]
-    (->>
-      (filter #(> sample-mean (second %1)) samples)
-      (filter #(statistically-significant? second 0.05 samples %1))
-      (map #(vec [-1.0 (feature-extractor (first %1))]))
-      (set))))
-
-(def kernel-types svm/kernel-types)
-(def svm-types svm/svm-types)
-(def predict svm/predict)
+(defn- get-training-samples
+  "Generates the training examples used for the underlying classifier.
+   If there is a demonstrably superior action, it is classified as positive and all others as negative.
+   If there is not, then the demonstrably inferior examples are classified as negative.
+   
+   fe   : Feature extractor.
+   qpi  : The samples in the format [state reward]
+   
+   Returns a set of classification examples."
+  [fe qpi]
+  (let [sample-mean (/ (reduce + (map second qpi)) (count qpi)) 
+        amax (apply max (map second qpi))
+        qmax (first (filter #(= amax (second %)) qpi))
+        a* (if (statistically-significant? second 0.05 qpi qmax) qmax nil)]
+    (if a*
+      (union #{[1.0 (fe (first a*))]} (set (map #(vec [-1.0 (fe (first %))]) (filter #(not (= a* %)) qpi))))
+      (->>
+        (filter #(> sample-mean (second %1)) qpi)
+        (filter #(statistically-significant? second 0.05 qpi %1))
+        (map #(vec [-1.0 (fe (first %1))]))
+        (set))))) 
 
 (defn policy
   "Executes the policy on the corresponding state and determines a proper action.
@@ -84,14 +84,7 @@
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
    is that the state space for our Markov Decision Process (MDP) is too large to compute exactly.
 
-   Arguments:
-   m  : Generative model a function that takes s, a and a seed integer.
-   s  : A state, paired with the action.
-   a  : An action, paired with the state, represents the initial action for this trajectory.
-   y  : Discount factor. 0 < y <= 1
-   pi : A policy.
-   k  : Number of trajectories.
-   t  : The length of each trajectory.
+   Arguments: Defer to documentation for function `api` for arguments.
 
    Returns:
    A tuple of the form [new-state approximated-value]"
@@ -126,5 +119,6 @@
       (= tsi-1 ts) pi
       :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
                   a* (apply max (map second qpi))
-                  next-ts  (union ts  (get-positive-samples fe qpi a*)  (get-negative-samples fe qpi))]
+                  next-ts  (union ts (get-training-samples fe qpi))]
               (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts)))))
+
