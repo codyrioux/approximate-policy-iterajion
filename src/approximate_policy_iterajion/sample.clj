@@ -34,7 +34,7 @@
 
 (defn features
   "Features are the value of the state and the difference from goal"
-  [s]
+  [s a]
   {1 s
    2 (- goal s)
    3 (if (pos? s) 1 0)

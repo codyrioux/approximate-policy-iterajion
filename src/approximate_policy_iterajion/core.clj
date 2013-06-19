@@ -47,11 +47,11 @@
         qmax (first (filter #(= amax (second %)) qpi))
         a* (if (statistically-significant? second 0.05 qpi qmax) qmax nil)]
     (if a*
-      (union #{[1.0 (fe (first a*))]} (set (map #(vec [-1.0 (fe (first %))]) (filter #(not (= a* %)) qpi))))
+      (union #{[1.0 (apply fe (first a*))]} (set (map #(vec [-1.0 (apply fe (first %))]) (filter #(not (= a* %)) qpi))))
       (->>
         (filter #(> sample-mean (second %1)) qpi)
         (filter #(statistically-significant? second 0.05 qpi %1))
-        (map #(vec [-1.0 (fe (first %1))]))
+        (map #(vec [-1.0 (apply fe (first %1))]))
         (set))))) 
 
 (defn policy
@@ -75,9 +75,9 @@
    Returns: The next action as decided by the policy,
    randomly selected if there are multiple positive."
   [feature-extractor rw sp m model state]
-  (let [actions (filter #(= 1.0 (svm/predict model (feature-extractor (m state %1)))) (sp state))
+  (let [actions (filter #(= 1.0 (svm/predict model (feature-extractor state % ))) (sp state))
         actions (if (> (count actions) 0) actions (sp state))
-        rw-actions (zipmap (map #( rw (m state %)) actions) actions)]
+        rw-actions (zipmap (map #(rw (m state %)) actions) actions)]
     (rw-actions (reduce max (keys rw-actions)))))
 
 (defn- rollout
@@ -89,7 +89,7 @@
    Returns:
    A tuple of the form [new-state approximated-value]"
   [m, rw, s, a, y, pi, k, t]
-  [(m s a) (* (/ 1 k) (reduce + (pmap (fn [_] (let [sprime (m s a) r (rw sprime)]
+  [[s a] (* (/ 1 k) (reduce + (pmap (fn [_] (let [sprime (m s a) r (rw sprime)]
                                                 (loop [s sprime, t t, qk r, y y]
                                                   (cond 
                                                     (= 0 t) qk
@@ -109,7 +109,7 @@
    pi : A policy function that takes a model and state, returns an action.
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.
-   fe : A function that extracts features from a state. {1 feature1, 2 feature2, ...}
+   fe : A function that extracts features from a [state action] pair {1 feature1, 2 feature2, ...}
    options : Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
    Returns: A function pi that takes state and returns an action."
@@ -118,7 +118,6 @@
     (cond
       (= tsi-1 ts) pi
       :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
-                  a* (apply max (map second qpi))
                   next-ts  (union ts (get-training-samples fe qpi))]
               (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts)))))
 

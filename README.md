@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.1"]
+[apprpoximate-policy-iterajion "0.3.2"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -70,13 +70,13 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 ```clojure
 (defn features
-  "Features are the value of the state and the difference from goal"
-  [s]
+  [s a]
   {1 s
    2 (- goal s)
    3 (if (pos? s) 1 0)
    4 (if (pos? (- goal s)) 1 0)
    5 (if (> goal s) 1 0)
+   6 a
    })
 ```
 
