@@ -83,11 +83,12 @@
 (defn- rollout
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
    is that the state space for our Markov Decision Process (MDP) is too large to compute exactly.
+   The approximated value returned is the estimated value of applying action to state.
 
    Arguments: Defer to documentation for function `api` for arguments.
 
    Returns:
-   A tuple of the form [new-state approximated-value]"
+   A tuple of the form [[state action] approximated-value]"
   [m, rw, s, a, y, pi, k, t]
   [[s a] (* (/ 1 k) (reduce + (pmap (fn [_] (let [sprime (m s a) r (rw sprime)]
                                                 (loop [s sprime, t t, qk r, y y]
@@ -102,11 +103,11 @@
    Arguments:
    m  : Generative model.
    rw : Reward function, takes a state and returns a reward value.
-   dp : A source of rollout states, a fn that returns a set of states. (dp)
+   dp : A source of rollout states, a fn that returns a set of states. (dp states-1 pi)
    sp : A source of available actions for a state, an fn that takes a state and returns actions.
    (sp state)
    y  : Discount factor. 0 to 1
-   pi : A policy function that takes a model and state, returns an action.
+   pi0 : A policy function that takes a model and state, returns an action.
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.
    fe : A function that extracts features from a [state action] pair {1 feature1, 2 feature2, ...}
@@ -114,10 +115,10 @@
 
    Returns: A function pi that takes state and returns an action."
   [m rw dp sp y pi0 k t fe & options]
-  (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil]
+  (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil states-1 nil]
     (cond
       (= tsi-1 ts) pi
-      :else (let [qpi (apply concat (for [s (dp)] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
+      :else (let [states (dp states-1 pi)
+                  qpi (apply concat (for [s states] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
                   next-ts  (union ts (get-training-samples fe qpi))]
-              (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts)))))
-
+              (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states)))))

@@ -24,7 +24,7 @@
 
 (defn dp
   "0 to goal * 2 for starting states"
-  []
+  [states-1 pi]
   (range 0 (* goal 2)))
 
 (defn sp

@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.2"]
+[apprpoximate-policy-iterajion "0.3.3"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -118,6 +118,13 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 ```
 
 Now take this and build your own reinforcement learning solutions to problems. :D
+
+## Changelog
+
+### 0.3.3
+The parameter function `dp` is now provided with `states-1` the set of states used in the last iteration and `pi` the policy.
+The intention is to allow people to guide their state generation using the policy in the event that the state space is very large.
+
 
 ## Todo
 * Unit Tests
