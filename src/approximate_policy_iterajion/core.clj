@@ -90,7 +90,7 @@
    Returns:
    A tuple of the form [[state action] approximated-value]"
   [m, rw, s, a, y, pi, k, t]
-  [[s a] (* (/ 1 k) (reduce + (pmap (fn [_] (let [sprime (m s a) r (rw sprime)]
+  [[s a] (* (/ 1 k) (reduce + (map (fn [_] (let [sprime (m s a) r (rw sprime)]
                                                 (loop [s sprime, t t, qk r, y y]
                                                   (cond 
                                                     (= 0 t) qk

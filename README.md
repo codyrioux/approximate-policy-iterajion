@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.3"]
+[apprpoximate-policy-iterajion "0.3.4"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -120,6 +120,11 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.3.4
+
+Removed the pmap from the rollout function. It appears as though any attempt at using the svm model in parallel creates
+a resource deadlock. I'll need to explore classifiers in the future that will work for this purpose.
 
 ### 0.3.3
 The parameter function `dp` is now provided with `states-1` the set of states used in the last iteration and `pi` the policy.
