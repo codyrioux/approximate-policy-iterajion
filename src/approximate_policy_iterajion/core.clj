@@ -97,6 +97,13 @@
                                                     :else (let [sprime (m s (pi s)) r (rw sprime)]
                                                             (recur sprime (- t 1) (+ qk (* (Math/pow y t) r)) y)))))) (range 0 k))))])
 
+(defn- worker
+  "Worker thread that can be run in parallel to compute chunks of
+   [state action] pairs."
+  [sp pi0 m rw y ts k t work options]
+  (let [pi (if (= #{} ts) #(rand-nth (sp %)) (partial pi0 (apply svm/train-model (conj options ts))))]
+    (doall (map #(rollout m rw (first %) (second %) y pi k t) work))))
+
 (defn api
   "The primary function for approximate policy iteration.
 
@@ -111,14 +118,16 @@
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.
    fe : A function that extracts features from a [state action] pair {1 feature1, 2 feature2, ...}
+   bf : Branching factor, use 1 for completely serial. Be careful, too high and you'll deadlock!
    options : Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
    Returns: A function pi that takes state and returns an action."
-  [m rw dp sp y pi0 k t fe & options]
+  [m rw dp sp y pi0 k t fe bf & options]
   (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil states-1 nil]
     (cond
       (= tsi-1 ts) pi
       :else (let [states (dp states-1 pi)
-                  qpi (apply concat (for [s states] (for [a (sp s)] (rollout m rw s a y pi k t)))) 
+                  state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
+                  qpi (doall (apply concat (pmap #(worker sp pi0 m rw y ts k t % options) (partition-all (/ (count state-action-pairs) bf) state-action-pairs))))
                   next-ts  (union ts (get-training-samples fe qpi))]
               (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states)))))

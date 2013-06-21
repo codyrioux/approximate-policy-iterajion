@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.4"]
+[apprpoximate-policy-iterajion "0.3.5"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -121,6 +121,11 @@ Now take this and build your own reinforcement learning solutions to problems. :
 
 ## Changelog
 
+### 0.3.5
+Added a branching factor parameter to the `api` function. This allows you to chunk the dataset into the
+specified number of pieces for parallel processing. In experimentation the default pmap settings did not
+work well. Setting the number to the number of processors in the machine proved much more useful.
+
 ### 0.3.4
 
 Removed the pmap from the rollout function. It appears as though any attempt at using the svm model in parallel creates
@@ -133,8 +138,7 @@ The intention is to allow people to guide their state generation using the polic
 
 ## Todo
 * Unit Tests
-* Agents for parallelism
-* Explore using deep belief networks
+* Explore alternate classifiers
 
 ## License
 
