@@ -86,7 +86,7 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(def my-policy (api/api m reward dp sp 0.99 (partial api/policy features reward sp m) 300 10 features)))
+(def my-policy (api/api m reward dp sp 0.99 (partial api/policy features reward sp m) 300 10 features 2 "sample" :kernel-type (:rbf api/kernel-types))))
 
 ; We get some output from the underlying svm implementation
 
