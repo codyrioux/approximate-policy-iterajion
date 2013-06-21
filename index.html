@@ -45,7 +45,7 @@ very reusable so I factored it out into a library.</p>
 
 <p>Add the following dependency to your <code>project.clj</code> file.</p>
 
-<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.3.1"</span><span class="p">]</span>
+<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.3.6"</span><span class="p">]</span>
 </pre></div>
 
 <p>All of the following code can be found in <code>sample.clj</code></p>
@@ -95,13 +95,13 @@ add any number between <code>-(goal / 2) and (goal / 2)</code></p>
 under the hood so our features are maps of increasing numbers 1..n to the feature value.</p>
 
 <div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">features</span>
-  <span class="s">"Features are the value of the state and the difference from goal"</span>
-  <span class="p">[</span><span class="nv">s</span><span class="p">]</span>
+  <span class="p">[</span><span class="nv">s</span> <span class="nv">a</span><span class="p">]</span>
   <span class="p">{</span><span class="mi">1</span> <span class="nv">s</span>
    <span class="mi">2</span> <span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">)</span>
    <span class="mi">3</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">pos? </span><span class="nv">s</span><span class="p">)</span> <span class="mi">1</span> <span class="mi">0</span><span class="p">)</span>
    <span class="mi">4</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">pos? </span><span class="p">(</span><span class="nb">- </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">))</span> <span class="mi">1</span> <span class="mi">0</span><span class="p">)</span>
    <span class="mi">5</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">)</span> <span class="mi">1</span> <span class="mi">0</span><span class="p">)</span>
+   <span class="mi">6</span> <span class="nv">a</span>
    <span class="p">})</span>
 </pre></div>
 
@@ -110,7 +110,7 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 <div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
 
-<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span> <span class="nv">reward</span> <span class="nv">sp</span> <span class="nv">m</span><span class="p">)</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span> <span class="nv">reward</span> <span class="nv">sp</span> <span class="nv">m</span><span class="p">)</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span> <span class="mi">2</span> <span class="s">"sample"</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
 
 <span class="c1">; We get some output from the underlying svm implementation</span>
 
@@ -143,12 +143,39 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 <p>Now take this and build your own reinforcement learning solutions to problems. :D</p>
 
 <h2>
+<a name="changelog" class="anchor" href="#changelog"><span class="octicon octicon-link"></span></a>Changelog</h2>
+
+<h3>
+<a name="036" class="anchor" href="#036"><span class="octicon octicon-link"></span></a>0.3.6</h3>
+
+<p>Added an id parameter to the <code>api</code> function. This allows the run to identify itself and persist
+and load its training set in case of interruption. Useful for EC2 spot instance computation.</p>
+
+<h3>
+<a name="035" class="anchor" href="#035"><span class="octicon octicon-link"></span></a>0.3.5</h3>
+
+<p>Added a branching factor parameter to the <code>api</code> function. This allows you to chunk the dataset into the
+specified number of pieces for parallel processing. In experimentation the default pmap settings did not
+work well. Setting the number to the number of processors in the machine proved much more useful.</p>
+
+<h3>
+<a name="034" class="anchor" href="#034"><span class="octicon octicon-link"></span></a>0.3.4</h3>
+
+<p>Removed the pmap from the rollout function. It appears as though any attempt at using the svm model in parallel creates
+a resource deadlock. I'll need to explore classifiers in the future that will work for this purpose.</p>
+
+<h3>
+<a name="033" class="anchor" href="#033"><span class="octicon octicon-link"></span></a>0.3.3</h3>
+
+<p>The parameter function <code>dp</code> is now provided with <code>states-1</code> the set of states used in the last iteration and <code>pi</code> the policy.
+The intention is to allow people to guide their state generation using the policy in the event that the state space is very large.</p>
+
+<h2>
 <a name="todo" class="anchor" href="#todo"><span class="octicon octicon-link"></span></a>Todo</h2>
 
 <ul>
 <li>Unit Tests</li>
-<li>Agents for parallelism</li>
-<li>Explore using deep belief networks</li>
+<li>Explore alternate classifiers</li>
 </ul><h2>
 <a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
 
