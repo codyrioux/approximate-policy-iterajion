@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.5"]
+[apprpoximate-policy-iterajion "0.3.6"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -120,6 +120,10 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.3.6
+Added an id parameter to the `api` function. This allows the run to identify itself and persist
+and load its training set in case of interruption. Useful for EC2 spot instance computation.
 
 ### 0.3.5
 Added a branching factor parameter to the `api` function. This allows you to chunk the dataset into the

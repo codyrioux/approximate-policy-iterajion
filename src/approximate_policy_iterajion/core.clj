@@ -119,15 +119,22 @@
    t  : The length of each trajectory.
    fe : A function that extracts features from a [state action] pair {1 feature1, 2 feature2, ...}
    bf : Branching factor, use 1 for completely serial. Be careful, too high and you'll deadlock!
+   id : An identifier for this run, used to persist the dataset in case of interruption. 
    options : Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
    Returns: A function pi that takes state and returns an action."
-  [m rw dp sp y pi0 k t fe bf & options]
-  (loop [pi #(rand-nth (sp %)) ts #{} tsi-1 nil states-1 nil]
+  [m rw dp sp y pi0 k t fe bf id & options]
+  (loop [pi #(rand-nth (sp %))
+         ts (let [f (clojure.java.io/file id)
+                  ds (if (.exists f) (read-string (slurp id)) #{})]
+              ds)
+         tsi-1 nil
+         states-1 nil]
     (cond
       (= tsi-1 ts) pi
       :else (let [states (dp states-1 pi)
                   state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
                   qpi (doall (apply concat (pmap #(worker sp pi0 m rw y ts k t % options) (partition-all (/ (count state-action-pairs) bf) state-action-pairs))))
                   next-ts  (union ts (get-training-samples fe qpi))]
+              (spit id next-ts)
               (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states)))))
