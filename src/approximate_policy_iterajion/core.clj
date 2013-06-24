@@ -36,23 +36,25 @@
   "Generates the training examples used for the underlying classifier.
    If there is a demonstrably superior action, it is classified as positive and all others as negative.
    If there is not, then the demonstrably inferior examples are classified as negative.
-   
+
    fe   : Feature extractor.
    qpi  : The samples in the format [state reward]
-   
+
    Returns a set of classification examples."
   [fe qpi]
-  (let [sample-mean (/ (reduce + (map second qpi)) (count qpi)) 
-        amax (apply max (map second qpi))
-        qmax (first (filter #(= amax (second %)) qpi))
-        a* (if (statistically-significant? second 0.05 qpi qmax) qmax nil)]
-    (if a*
-      (union #{[1.0 (apply fe (first a*))]} (set (map #(vec [-1.0 (apply fe (first %))]) (filter #(not (= a* %)) qpi))))
-      (->>
-        (filter #(> sample-mean (second %1)) qpi)
-        (filter #(statistically-significant? second 0.05 qpi %1))
-        (map #(vec [-1.0 (apply fe (first %1))]))
-        (set))))) 
+  (if (< (count qpi) 2)
+    #{}
+    (let [sample-mean (/ (reduce + (map second qpi)) (count qpi)) 
+          amax (apply max (map second qpi))
+          qmax (first (filter #(= amax (second %)) qpi))
+          a* (if (statistically-significant? second 0.05 qpi qmax) qmax nil)]
+      (if a*
+        (union #{[1.0 (apply fe (first a*))]} (set (map #(vec [-1.0 (apply fe (first %))]) (filter #(not (= a* %)) qpi))))
+        (->>
+          (filter #(> sample-mean (second %1)) qpi)
+          (filter #(statistically-significant? second 0.05 qpi %1))
+          (map #(vec [-1.0 (apply fe (first %1))]))
+          (set)))))) 
 
 (defn policy
   "Executes the policy on the corresponding state and determines a proper action.
