@@ -37,8 +37,8 @@
    If there is a demonstrably superior action, it is classified as positive and all others as negative.
    If there is not, then the demonstrably inferior examples are classified as negative.
 
-   fe   : Feature extractor.
-   qpi  : The samples in the format [state reward]
+   fe   : Feature extractor for [state action] pairs.
+   qpi  : The samples in the format [[state action] reward]
 
    Returns a set of classification examples."
   [fe qpi]
@@ -56,6 +56,8 @@
           (map #(vec [-1.0 (apply fe (first %1))]))
           (set)))))) 
 
+(declare rollout)
+
 (defn policy
   "Executes the policy on the corresponding state and determines a proper action.
    Generates all possible actions using sp, then maps these actions to their state using m
@@ -64,6 +66,9 @@
    Note: This is an example policy and you are encouraged to roll your own.
 
    Arguments: 
+   k                 : The number of trajectories to compute for each rollout.
+   t                 : The length of each trajectory for each rollout.
+   y                 : The discount factor for rollout trajectories.
    feature-extractor : A feature extractor function that takes a state and returns a set of features for the learner.
    rw                : Reward function that takes a state and returns a reward.
    sp                : A function that takes a state and returns all possible actions.
@@ -74,13 +79,15 @@
    The algorithm will take all positive samples and attempt to maximize reward.
    If no actions are classified it attempts to maximize reward over all actions.
 
-   Returns: The next action as decided by the policy,
-   randomly selected if there are multiple positive."
-  [feature-extractor rw sp m model state]
+   Returns: The next action as decided by the policy, randomly selected amongst available options.
+   When not in training, it is greedy (on the estimated value) of each action."
+  [k t y feature-extractor rw sp m model state & {:keys [mode] :or {mode :training}}]
   (let [actions (filter #(= 1.0 (svm/predict model (feature-extractor state % ))) (sp state))
-        actions (if (> (count actions) 0) actions (sp state))
-        rw-actions (zipmap (map #(rw (m state %)) actions) actions)]
-    (rw-actions (reduce max (keys rw-actions)))))
+        actions (if (> (count actions) 0) actions (sp state))]
+    (if (= mode :training)
+      (rand-nth actions)
+      (let [q-actions (zipmap (map #(second (rollout m rw state % y (partial policy k t y feature-extractor rw sp m model) k t)) actions) actions)]
+        (q-actions (reduce max (keys q-actions)))))))
 
 (defn- rollout
   "This function estimates the value of a state-action pair using rollouts. The underlying concept
@@ -110,12 +117,11 @@
   "The primary function for approximate policy iteration.
 
    Arguments:
-   m  : Generative model.
+   m  : Generative model, takes [state action] pairs and returns a new state.
    rw : Reward function, takes a state and returns a reward value.
    dp : A source of rollout states, a fn that returns a set of states. (dp states-1 pi)
-   sp : A source of available actions for a state, an fn that takes a state and returns actions.
-   (sp state)
-   y  : Discount factor. 0 to 1
+   sp : A source of available actions for a state, an fn that takes a state and returns actions. (sp state)
+   y  : Discount factor for rollout trajectories. 0 to 1
    pi0 : A policy function that takes a model and state, returns an action.
    k  : The number of trajectories to compute on each rollout.
    t  : The length of each trajectory.

@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.7"]
+[apprpoximate-policy-iterajion "0.3.8"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -92,13 +92,13 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 
 ; Now lets ask the policy for an action given our state s
 
-(my-policy 0)
+(my-policy 0 :mode :test)
 ;=> 4
-(my-policy 4)
+(my-policy 4 :mode :test)
 ;=> 4 
-(my-policy 8)
+(my-policy 8 :mode :test)
 ;=> 2
-(my-policy 10)
+(my-policy 10 :mode :test)
 ;=> 0
 ```
 
@@ -107,19 +107,26 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 ```clojure
 (use 'approximate-policy-iterajion.sample :reload-all)
 (def my-policy (create-api-policy 300 10))
-(my-policy 0)
+(my-policy 0 :mode :test)
 ;=> 4
-(my-policy 4)
+(my-policy 4 :mode :test)
 ;=> 4 
-(my-policy 8)
+(my-policy 8 :mode :test)
 ;=> 2
-(my-policy 10)
+(my-policy 10 :mode :test)
 ;=> 0
 ```
 
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.3.8
+Moved the default policy to one that is random during training and greedy on the estimated (rollout)
+values during testing.
+
+### 0.3.7
+Fixed a bug in which an exception was thrown if qpi contained only one state-action pair.
 
 ### 0.3.6
 Added an id parameter to the `api` function. This allows the run to identify itself and persist
