@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.9"]
+[apprpoximate-policy-iterajion "0.3.10"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -120,6 +120,13 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.3.10
+16 agents are now used for parallelism in the application.
+
+### 0.3.9
+The bug supposedly fixed in 0.3.7 appears to still exist, and this is another attempt at fixing
+said bug.
 
 ### 0.3.8
 Moved the default policy to one that is random during training and greedy on the estimated (rollout)

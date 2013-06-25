@@ -87,7 +87,7 @@
 
 (defn- worker
   "Worker thread that can be run in parallel to compute chunks of `[state action]` pairs."
-  [sp pi0 m rw y ts k t work options]
+  [work sp pi0 m rw y ts k t options]
   (let [pi (if (= #{} ts) #(rand-nth (sp %)) (partial pi0 (apply svm/train-model (conj options ts))))]
     (doall (map #(rollout m rw (first %) (second %) y pi k t) work))))
 
@@ -176,7 +176,11 @@
       (= tsi-1 ts) pi
       :else (let [states (dp states-1 pi)
                   state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
-                  qpi (doall (apply concat (pmap #(worker sp pi0 m rw y ts k t % options) (partition-all (/ (count state-action-pairs) bf) state-action-pairs))))
-                  next-ts  (union ts (get-training-samples fe qpi))]
+                  work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
+                  agents (map #(agent %) work)
+                  _ (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
+                  _ (apply await agents)
+                  qpi (apply concat (map deref agents))
+                  next-ts  (union ts (get-training-samples fe qpi)) ]
               (spit id next-ts)
               (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states)))))
