@@ -38,7 +38,7 @@
 
    Examples: `(statistically-significant? identity 0.05 (range 1 10) 15)`"
   [score p-threshold samples target-sample]
-  (if (< (count (set samples)) 2)
+  (if (< (count (set (map score samples))) 2)
     true
     (>= p-threshold (:p-value (stats/t-test 
                                 (map score samples) 
@@ -177,7 +177,7 @@
       :else (let [states (dp states-1 pi)
                   state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
                   work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
-                  agents (map #(agent %) work)
+                  agents (map #(agent % :error-handler #(prn %2))work)
                   _ (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
                   _ (apply await agents)
                   qpi (apply concat (map deref agents))

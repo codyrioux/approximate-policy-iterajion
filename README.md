@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.10"]
+[apprpoximate-policy-iterajion "0.3.11"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -120,6 +120,10 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.3.11
+Another attempt at fixing the divide by zero bug occuring in the t-test that determines
+significance.
 
 ### 0.3.10
 16 agents are now used for parallelism in the application.
