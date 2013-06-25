@@ -177,7 +177,7 @@
       :else (let [states (dp states-1 pi)
                   state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
                   work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
-                  agents (map #(agent % :error-handler #(prn %2))work)
+                  agents (map #(agent % :error-handler (fn [a b] prn b))work)
                   _ (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
                   _ (apply await agents)
                   qpi (apply concat (map deref agents))
