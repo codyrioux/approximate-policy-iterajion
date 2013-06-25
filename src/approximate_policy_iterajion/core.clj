@@ -24,8 +24,16 @@
 ;; Necessary for a full understanding of the algorithm but not necessary in order to use
 ;; the algorithm.
 
+
+;; 
+;;   *HACK:* The try/catch here catches the exception in which there is only a single
+;;   unique value contained in the sample. In this case the t-test will throw an exception,
+;;   but we can return true as the element is significant for our purposes.
+;;   This is largely for performance reasons as checking for a minimum of two distinct values is
+;;   costlier than catching the exception.
+
 (defn- statistically-significant?
-  "Determines if the provided target-sample is statistically significant compared to all samples.  Arguments:
+  "Determines if the provided target-sample is statistically significant compared to all samples.
 
    p-threshold: The p value threshold for the t-test. ex. 0.05 or 0.01
    
@@ -38,13 +46,13 @@
 
    Examples: `(statistically-significant? identity 0.05 (range 1 10) 15)`"
   [score p-threshold samples target-sample]
-  (if (< (count (set (map score samples))) 2)
-    true
+  (try
     (>= p-threshold (:p-value (stats/t-test 
                                 (map score samples) 
-                                :mu (score target-sample))))))
+                                :mu (score target-sample))))
+    (catch Exception e (identity true))))
 
-(defn- get-training-samples
+(defn get-training-samples
   "Generates the training examples used for the underlying classifier.
    If there is a demonstrably superior action, it is classified as positive and all others as negative.
    If there is not, then the demonstrably inferior examples are classified as negative.
