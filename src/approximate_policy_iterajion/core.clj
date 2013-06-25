@@ -38,9 +38,11 @@
 
    Examples: `(statistically-significant? identity 0.05 (range 1 10) 15)`"
   [score p-threshold samples target-sample]
-  (>= p-threshold (:p-value (stats/t-test 
-                              (map score samples) 
-                              :mu (score target-sample)))))
+  (if (< (count (set samples)) 2)
+    true
+    (>= p-threshold (:p-value (stats/t-test 
+                                (map score samples) 
+                                :mu (score target-sample))))))
 
 (defn- get-training-samples
   "Generates the training examples used for the underlying classifier.
