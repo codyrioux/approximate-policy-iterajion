@@ -17,20 +17,11 @@
 
 (def kernel-types svm/kernel-types)
 (def svm-types svm/svm-types)
-(def predict svm/predict)
 
 ;; ## Helper Functions
 ;; A set of functions used internally by the algorithm to perform it's calculations.
 ;; Necessary for a full understanding of the algorithm but not necessary in order to use
 ;; the algorithm.
-
-
-;; 
-;;   *HACK:* The try/catch here catches the exception in which there is only a single
-;;   unique value contained in the sample. In this case the t-test will throw an exception,
-;;   but we can return true as the element is significant for our purposes.
-;;   This is largely for performance reasons as checking for a minimum of two distinct values is
-;;   costlier than catching the exception.
 
 (defn- statistically-significant?
   "Determines if the provided target-sample is statistically significant compared to all samples.
@@ -46,13 +37,13 @@
 
    Examples: `(statistically-significant? identity 0.05 (range 1 10) 15)`"
   [score p-threshold samples target-sample]
-  (try
+  (if (< (count (set (map score samples))) 2)
+    true
     (>= p-threshold (:p-value (stats/t-test 
                                 (map score samples) 
-                                :mu (score target-sample))))
-    (catch Exception e (identity true))))
+                                :mu (score target-sample))))))
 
-(defn get-training-samples
+(defn- get-training-samples
   "Generates the training examples used for the underlying classifier.
    If there is a demonstrably superior action, it is classified as positive and all others as negative.
    If there is not, then the demonstrably inferior examples are classified as negative.
@@ -112,21 +103,11 @@
    Note: This is an example policy and you are encouraged to roll your own.
 
    Arguments: 
-   k                 : The number of trajectories to compute for each rollout.
-
-   t                 : The length of each trajectory for each rollout.
-
-   y                 : The discount factor for rollout trajectories.
-
    feature-extractor : A feature extractor function that takes a state and returns a set of features for the learner.
-
-   rw                : Reward function that takes a state and returns a reward.
    
    sp                : A function that takes a state and returns all possible actions.
 
-   m                 : A generative model that takes `(s, a)` and returns a new state.
-
-   model             : A svm-clj model.
+   model             : An svm-clj model.
 
    state             : The current state to use as a base for the next action.
 
@@ -135,13 +116,10 @@
 
    Returns: The next action as decided by the policy, randomly selected amongst available options.
    When not in training, it is greedy (on the estimated value) of each action."
-  [k t y feature-extractor rw sp m model state & {:keys [mode] :or {mode :training}}]
+  [feature-extractor sp model state]
   (let [actions (filter #(= 1.0 (svm/predict model (feature-extractor state % ))) (sp state))
         actions (if (> (count actions) 0) actions (sp state))]
-    (if (= mode :training)
-      (rand-nth actions)
-      (let [q-actions (zipmap (map #(second (rollout m rw state % y (partial policy k t y feature-extractor rw sp m model) k t)) actions) actions)]
-        (q-actions (reduce max (keys q-actions)))))))
+      (rand-nth actions)))
 
 (defn api
   "The primary function for approximate policy iteration.
@@ -150,7 +128,7 @@
 
    m: Generative model, takes `[state action]` pairs and returns a new state.
 
-   rw: Reward function, takes a state and returns a reward value.
+   rw: Reward function, takes a `state` and returns a reward value.
    
    dp: A source of rollout states, a fn that returns a set of states. `(dp states-1 pi)`
 
@@ -158,37 +136,42 @@
 
    y: Discount factor for rollout trajectories. 0 to 1
 
-   pi0: A policy function that takes a model and state, returns an action.
-
    k: The number of trajectories to compute on each rollout.
 
    t: The length of each trajectory.
 
    fe: A function that extracts features from a `[state action]` pair `{1 feature1, 2 feature2, ...}`
 
-   bf: Branching factor, use 1 for completely serial. Be careful, too high and you'll deadlock!
-
    id: An identifier for this run, used to persist the dataset in case of interruption. 
 
    options: Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
-   Returns: A function pi that takes state and returns an action."
-  [m rw dp sp y pi0 k t fe bf id & options]
-  (loop [pi #(rand-nth (sp %))
-         ts (let [f (clojure.java.io/file id)
-                  ds (if (.exists f) (read-string (slurp id)) #{})]
-              ds)
-         tsi-1 nil
-         states-1 nil]
-    (cond
-      (= tsi-1 ts) pi
-      :else (let [states (dp states-1 pi)
-                  state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
-                  work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
-                  agents (map #(agent % :error-handler (fn [a b] prn b))work)
-                  _ (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
-                  _ (apply await agents)
-                  qpi (apply concat (map deref agents))
-                  next-ts  (union ts (get-training-samples fe qpi)) ]
-              (spit id next-ts)
-              (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states)))))
+   Returns: A policy function that is greedy on the estimated reward."
+  [m rw dp sp y k t fe id & options]
+  (let [pi0 (partial policy fe sp)]
+    (loop [pi #(rand-nth (sp %))
+           ts (let [f (clojure.java.io/file id)
+                    ds (if (.exists f) (read-string (slurp id)) #{})]
+                ds)
+           tsi-1 nil
+           states-1 nil]
+      (cond
+        (= tsi-1 ts)
+        (partial
+          (fn [model state]
+            (let [actions (filter #(= 1.0 (svm/predict model (fe state % ))) (sp state))
+                  actions (if (> (count actions) 0) actions (sp state))
+                  q-actions  (zipmap  (map #(second  (rollout m rw state % y pi k t)) actions) actions)]
+              (q-actions (reduce max (keys q-actions)))))
+          (apply svm/train-model (conj options ts)))
+        :else
+        (let [states (dp states-1 pi)
+              state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
+              work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
+              agents (map #(agent % :error-handler (fn [a b] prn b))work)
+              _ (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
+              _ (apply await agents)
+              qpi (apply concat (map deref agents))
+              next-ts  (union ts (get-training-samples fe qpi))]
+          (spit id next-ts)
+          (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states))))))
