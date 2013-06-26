@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.3.13"]
+[apprpoximate-policy-iterajion "0.4.0"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -86,19 +86,19 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(def my-policy (api/api m reward dp sp 0.99 (partial api/policy features reward sp m) 300 10 features 2 "sample" :kernel-type (:rbf api/kernel-types))))
+(def my-policy (api/api m reward dp sp 0.99 300 10 features "sample" :kernel-type (:rbf api/kernel-types))))
 
 ; We get some output from the underlying svm implementation
 
 ; Now lets ask the policy for an action given our state s
 
-(my-policy 0 :mode :test)
+(my-policy 0)
 ;=> 4
-(my-policy 4 :mode :test)
+(my-policy 4)
 ;=> 4 
-(my-policy 8 :mode :test)
+(my-policy 8)
 ;=> 2
-(my-policy 10 :mode :test)
+(my-policy 10)
 ;=> 0
 ```
 
@@ -107,19 +107,23 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 ```clojure
 (use 'approximate-policy-iterajion.sample :reload-all)
 (def my-policy (create-api-policy 300 10))
-(my-policy 0 :mode :test)
+(my-policy 0)
 ;=> 4
-(my-policy 4 :mode :test)
+(my-policy 4)
 ;=> 4 
-(my-policy 8 :mode :test)
+(my-policy 8)
 ;=> 2
-(my-policy 10 :mode :test)
+(my-policy 10)
 ;=> 0
 ```
 
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.4.0
+Simplified the API function signature, policy is no longer a parameter. Implements a proper greedy (on estimated value)
+returned policy.
 
 ### 0.3.11
 Another attempt at fixing the divide by zero bug occuring in the t-test that determines
