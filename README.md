@@ -50,7 +50,7 @@ Now we need a function to generate a bunch of starting states. For our problem w
 ```clojure
 (defn dp
   "0 to goal * 2 for starting states"
-  []
+  [states-1 pi]
   (range 0 (* goal 2)))
 ```
 
