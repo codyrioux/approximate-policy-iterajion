@@ -77,7 +77,7 @@ To generate sprime we add <code>s + a</code> and to generate a reward we compute
 
 <div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">dp</span>
   <span class="s">"0 to goal * 2 for starting states"</span>
-  <span class="p">[]</span>
+  <span class="p">[</span><span class="nv">states-1</span> <span class="nv">pi</span><span class="p">]</span>
   <span class="p">(</span><span class="nb">range </span><span class="mi">0</span> <span class="p">(</span><span class="nb">* </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">)))</span>
 </pre></div>
 
