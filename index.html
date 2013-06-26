@@ -45,7 +45,7 @@ very reusable so I factored it out into a library.</p>
 
 <p>Add the following dependency to your <code>project.clj</code> file.</p>
 
-<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.3.6"</span><span class="p">]</span>
+<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.4.0"</span><span class="p">]</span>
 </pre></div>
 
 <p>All of the following code can be found in <code>sample.clj</code></p>
@@ -110,7 +110,7 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 <div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
 
-<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="p">(</span><span class="nb">partial </span><span class="nv">api/policy</span> <span class="nv">features</span> <span class="nv">reward</span> <span class="nv">sp</span> <span class="nv">m</span><span class="p">)</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span> <span class="mi">2</span> <span class="s">"sample"</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span> <span class="s">"sample"</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
 
 <span class="c1">; We get some output from the underlying svm implementation</span>
 
@@ -144,6 +144,40 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 <h2>
 <a name="changelog" class="anchor" href="#changelog"><span class="octicon octicon-link"></span></a>Changelog</h2>
+
+<h3>
+<a name="040" class="anchor" href="#040"><span class="octicon octicon-link"></span></a>0.4.0</h3>
+
+<p>Simplified the API function signature, policy is no longer a parameter. Implements a proper greedy (on estimated value)
+returned policy.</p>
+
+<h3>
+<a name="0311" class="anchor" href="#0311"><span class="octicon octicon-link"></span></a>0.3.11</h3>
+
+<p>Another attempt at fixing the divide by zero bug occuring in the t-test that determines
+significance.</p>
+
+<h3>
+<a name="0310" class="anchor" href="#0310"><span class="octicon octicon-link"></span></a>0.3.10</h3>
+
+<p>16 agents are now used for parallelism in the application.</p>
+
+<h3>
+<a name="039" class="anchor" href="#039"><span class="octicon octicon-link"></span></a>0.3.9</h3>
+
+<p>The bug supposedly fixed in 0.3.7 appears to still exist, and this is another attempt at fixing
+said bug.</p>
+
+<h3>
+<a name="038" class="anchor" href="#038"><span class="octicon octicon-link"></span></a>0.3.8</h3>
+
+<p>Moved the default policy to one that is random during training and greedy on the estimated (rollout)
+values during testing.</p>
+
+<h3>
+<a name="037" class="anchor" href="#037"><span class="octicon octicon-link"></span></a>0.3.7</h3>
+
+<p>Fixed a bug in which an exception was thrown if qpi contained only one state-action pair.</p>
 
 <h3>
 <a name="036" class="anchor" href="#036"><span class="octicon octicon-link"></span></a>0.3.6</h3>
