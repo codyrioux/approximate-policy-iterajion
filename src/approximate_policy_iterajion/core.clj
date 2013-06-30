@@ -144,19 +144,22 @@
 
    id: An identifier for this run, used to persist the dataset in case of interruption. 
 
+   mi: An integer representing the maximum number of iterations to run before returning.
+
    options: Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
    Returns: A policy function that is greedy on the estimated reward."
-  [m rw dp sp y k t fe id & options]
+  [m rw dp sp y k t fe id mi & options]
   (let [pi0 (partial policy fe sp)]
     (loop [pi #(rand-nth (sp %))
            ts (let [f (clojure.java.io/file id)
                     ds (if (.exists f) (read-string (slurp id)) #{})]
                 ds)
            tsi-1 nil
-           states-1 nil]
+           states-1 nil
+           iter mi]
       (cond
-        (= tsi-1 ts)
+        (or ( = tsi-1 ts) (= 0 iter))
         (partial
           (fn [model state]
             (let [actions (filter #(= 1.0 (svm/predict model (fe state % ))) (sp state))
@@ -174,4 +177,4 @@
               qpi (apply concat (map deref agents))
               next-ts  (union ts (get-training-samples fe qpi))]
           (spit id next-ts)
-          (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states))))))
+          (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states (dec iter)))))))

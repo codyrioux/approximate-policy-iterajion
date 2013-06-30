@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.4.1"]
+[apprpoximate-policy-iterajion "0.4.2"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -86,7 +86,7 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(def my-policy (api/api m reward dp sp 0.99 300 10 features "sample" :kernel-type (:rbf api/kernel-types))))
+(def my-policy (api/api m reward dp sp 0.99 300 10 features "sample" 5 :kernel-type (:rbf api/kernel-types))))
 
 ; We get some output from the underlying svm implementation
 
@@ -120,6 +120,13 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.4.2
+Added a maximum iterations (mi) parameter to api. Allows the user to constrain the run
+time of the learner.
+
+### 0.4.1
+The deployment to Clojars failed for 0.4.0 so I needed to push a new version.
 
 ### 0.4.0
 Simplified the API function signature, policy is no longer a parameter. Implements a proper greedy (on estimated value)
