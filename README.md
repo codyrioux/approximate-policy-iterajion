@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.4.2"]
+[apprpoximate-policy-iterajion "0.4.3"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -33,7 +33,9 @@ To generate sprime we add `s + a` and to generate a reward we compute `1 / (|goa
 (defn m
   "States and actions are added."
   [s a]
-  (+ s a))
+  (cond
+    (nil? a) s
+    :else (+ s a))
 ```
 
 Now a reward function.
@@ -62,7 +64,9 @@ add any number between `-(goal / 2) and (goal / 2)`
 (defn sp
   "Can add or subtract up to half of the goal."
   [s]
-  (range (* -1 (/ goal 2)) (/ goal 2)))
+  (cond
+   (= goal s) []
+   :else (range (* -1 (/ goal 2)) (/ goal 2))))
 ```
 
 Lastly we require a feature extraction function in order to teach our learner. approximate-policy-iterajion uses svm-clj
@@ -86,7 +90,7 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(def my-policy (api/api m reward dp sp 0.99 300 10 features "sample" 5 :kernel-type (:rbf api/kernel-types))))
+(def my-policy (api/api m reward dp sp 0.99 30 10 features "sample" 5 :kernel-type (:rbf api/kernel-types))))
 
 ; We get some output from the underlying svm implementation
 
@@ -120,6 +124,11 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.4.3
+Altered the code base so that situations in which no action exist can be handled. In this case
+the policy functions return nil. Therefore your state generator `sp` can return an empty list
+and your generative model `m` should be able to handle nil in place of action.
 
 ### 0.4.2
 Added a maximum iterations (mi) parameter to api. Allows the user to constrain the run

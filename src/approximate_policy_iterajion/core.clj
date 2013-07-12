@@ -115,11 +115,12 @@
    If no actions are classified it attempts to maximize reward over all actions.
 
    Returns: The next action as decided by the policy, randomly selected amongst available options.
-   When not in training, it is greedy (on the estimated value) of each action."
+   When not in training, it is greedy (on the estimated value) of each action.
+   nil for no action."
   [feature-extractor sp model state]
   (let [actions (filter #(= 1.0 (svm/predict model (feature-extractor state % ))) (sp state))
         actions (if (> (count actions) 0) actions (sp state))]
-      (rand-nth actions)))
+      (if (empty? actions) nil (rand-nth actions))))
 
 (defn api
   "The primary function for approximate policy iteration.
@@ -148,7 +149,8 @@
 
    options: Options as specified by svm-clj https://github.com/r0man/svm-clj/blob/master/src/svm/core.clj 
 
-   Returns: A policy function that is greedy on the estimated reward."
+   Returns: A policy function that is greedy on the estimated reward.
+            (policy state) ;=> action or nil if no action."
   [m rw dp sp y k t fe id mi & options]
   (let [pi0 (partial policy fe sp)]
     (loop [pi #(rand-nth (sp %))
@@ -165,13 +167,13 @@
             (let [actions (filter #(= 1.0 (svm/predict model (fe state % ))) (sp state))
                   actions (if (> (count actions) 0) actions (sp state))
                   q-actions  (zipmap  (map #(second  (rollout m rw state % y pi k t)) actions) actions)]
-              (q-actions (reduce max (keys q-actions)))))
+              (if (empty? q-actions) nil (q-actions (reduce max (keys q-actions))))))
           (apply svm/train-model (conj options ts)))
         :else
         (let [states (dp states-1 pi)
               state-action-pairs (doall (apply concat (for [s states] (for [a (sp s)] [s a]))))
               work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
-              agents (map #(agent % :error-handler (fn [a b] prn b))work)
+              agents (map #(agent %) work)
               _ (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
               _ (apply await agents)
               qpi (apply concat (map deref agents))

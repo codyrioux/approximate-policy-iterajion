@@ -20,7 +20,9 @@
 (defn m
   "States and actions are added."
   [s a]
-  (+ s a))
+  (cond
+    (nil? a) s
+    :else (+ s a)))
 
 (defn dp
   "0 to goal * 2 for starting states"
@@ -30,7 +32,9 @@
 (defn sp
   "Can add or subtract up to half of the goal."
   [s]
-  (range (* -1 (/ goal 2)) (/ goal 2)))
+  (cond
+    (= goal s) []
+    :else (range (* -1 (/ goal 2)) (/ goal 2))))
 
 (defn features
   "Features are the value of the state and the difference from goal"
