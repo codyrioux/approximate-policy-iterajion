@@ -14,7 +14,7 @@ very reusable so I factored it out into a library.
 Add the following dependency to your `project.clj` file.
 
 ```clojure
-[apprpoximate-policy-iterajion "0.4.3"]
+[apprpoximate-policy-iterajion "0.4.4"]
 ```
 
 All of the following code can be found in `sample.clj`
@@ -118,12 +118,18 @@ All of this code is available in `sample.clj` and can be run simply by calling:
 (my-policy 8)
 ;=> 2
 (my-policy 10)
-;=> 0
+;=> nil
 ```
 
 Now take this and build your own reinforcement learning solutions to problems. :D
 
 ## Changelog
+
+### 0.4.4
+Altered the generated policy so that operations are performed in parallel. The reasoning here
+is that should the policy encounter a state it has not seen and need to evaluate many actions
+the performance gain is large, whereas if a small number of actions are up for evaluation
+the performance loss will be minimal.
 
 ### 0.4.3
 Altered the code base so that situations in which no action exist can be handled. In this case

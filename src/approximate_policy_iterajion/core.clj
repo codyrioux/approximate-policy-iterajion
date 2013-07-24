@@ -87,7 +87,7 @@
 (defn- worker
   "Worker thread that can be run in parallel to compute chunks of `[state action]` pairs."
   [work sp pi0 m rw y ts k t options]
-  (let [pi (if (= #{} ts) #(rand-nth (sp %)) (partial pi0 (apply svm/train-model (conj options ts))))]
+  (let [pi (if (= #{} ts) #(if (empty? (sp %)) nil ( rand-nth (sp %))) (partial pi0 (apply svm/train-model (conj options ts))))]
     (doall (map #(rollout m rw (first %) (second %) y pi k t) work))))
 
 ;; ## Interface Functions
@@ -166,7 +166,13 @@
           (fn [model state]
             (let [actions (filter #(= 1.0 (svm/predict model (fe state % ))) (sp state))
                   actions (if (> (count actions) 0) actions (sp state))
-                  q-actions  (zipmap  (map #(second  (rollout m rw state % y pi k t)) actions) actions)]
+                  state-action-pairs (for [a actions] [state a])
+                  work (partition-all (/ (count state-action-pairs) 16) state-action-pairs)
+                  agents (map #(agent %) work)
+                  _  (doall (map #(send % worker sp pi0 m rw y ts k t options) agents))
+                  _ (apply await agents)
+                  qpi (apply concat (map deref agents))
+                  q-actions (zipmap (map second qpi) (map (comp second first) qpi))]
               (if (empty? q-actions) nil (q-actions (reduce max (keys q-actions))))))
           (apply svm/train-model (conj options ts)))
         :else
