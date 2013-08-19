@@ -110,11 +110,11 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 </pre></div>
 
 <p>Now that we have defined m, dp, sp, and features we can run approximate policy iteration with 300 rollouts per state,
- and a trajectory length of 5 per rollout using a discount factor of 0.99.</p>
+ and a trajectory length of 10 per rollout using a discount factor of 0.99.</p>
 
 <div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
 
-<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="mi">30</span> <span class="mi">10</span> <span class="nv">features</span> <span class="s">"sample"</span> <span class="mi">5</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span> <span class="s">"sample"</span> <span class="mi">5</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
 
 <span class="c1">; We get some output from the underlying svm implementation</span>
 
