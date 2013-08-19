@@ -85,12 +85,12 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 ```
 
 Now that we have defined m, dp, sp, and features we can run approximate policy iteration with 300 rollouts per state,
- and a trajectory length of 5 per rollout using a discount factor of 0.99.
+ and a trajectory length of 10 per rollout using a discount factor of 0.99.
 
 ```clojure
 (use 'approximate-policy-iterajion.core)
 
-(def my-policy (api/api m reward dp sp 0.99 30 10 features "sample" 5 :kernel-type (:rbf api/kernel-types))))
+(def my-policy (api/api m reward dp sp 0.99 300 10 features "sample" 5 :kernel-type (:rbf api/kernel-types))))
 
 ; We get some output from the underlying svm implementation
 
