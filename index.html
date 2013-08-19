@@ -45,7 +45,7 @@ very reusable so I factored it out into a library.</p>
 
 <p>Add the following dependency to your <code>project.clj</code> file.</p>
 
-<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.4.0"</span><span class="p">]</span>
+<div class="highlight"><pre><span class="p">[</span><span class="nv">apprpoximate-policy-iterajion</span> <span class="s">"0.4.4"</span><span class="p">]</span>
 </pre></div>
 
 <p>All of the following code can be found in <code>sample.clj</code></p>
@@ -62,7 +62,9 @@ To generate sprime we add <code>s + a</code> and to generate a reward we compute
 <div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">m</span>
   <span class="s">"States and actions are added."</span>
   <span class="p">[</span><span class="nv">s</span> <span class="nv">a</span><span class="p">]</span>
-  <span class="p">(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">))</span>
+  <span class="p">(</span><span class="nf">cond</span>
+    <span class="p">(</span><span class="nb">nil? </span><span class="nv">a</span><span class="p">)</span> <span class="nv">s</span>
+    <span class="ss">:else</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">s</span> <span class="nv">a</span><span class="p">))</span>
 </pre></div>
 
 <p>Now a reward function.</p>
@@ -88,7 +90,9 @@ add any number between <code>-(goal / 2) and (goal / 2)</code></p>
 <div class="highlight"><pre><span class="p">(</span><span class="kd">defn </span><span class="nv">sp</span>
   <span class="s">"Can add or subtract up to half of the goal."</span>
   <span class="p">[</span><span class="nv">s</span><span class="p">]</span>
-  <span class="p">(</span><span class="nb">range </span><span class="p">(</span><span class="nb">* </span><span class="mi">-1</span> <span class="p">(</span><span class="nb">/ </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">))</span> <span class="p">(</span><span class="nb">/ </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">)))</span>
+  <span class="p">(</span><span class="nf">cond</span>
+   <span class="p">(</span><span class="nb">= </span><span class="nv">goal</span> <span class="nv">s</span><span class="p">)</span> <span class="p">[]</span>
+   <span class="ss">:else</span> <span class="p">(</span><span class="nb">range </span><span class="p">(</span><span class="nb">* </span><span class="mi">-1</span> <span class="p">(</span><span class="nb">/ </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">))</span> <span class="p">(</span><span class="nb">/ </span><span class="nv">goal</span> <span class="mi">2</span><span class="p">))))</span>
 </pre></div>
 
 <p>Lastly we require a feature extraction function in order to teach our learner. approximate-policy-iterajion uses svm-clj
@@ -110,7 +114,7 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 
 <div class="highlight"><pre><span class="p">(</span><span class="nf">use</span> <span class="ss">'approximate-policy-iterajion.core</span><span class="p">)</span>
 
-<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="mi">300</span> <span class="mi">10</span> <span class="nv">features</span> <span class="s">"sample"</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">my-policy</span> <span class="p">(</span><span class="nf">api/api</span> <span class="nv">m</span> <span class="nv">reward</span> <span class="nv">dp</span> <span class="nv">sp</span> <span class="mf">0.99</span> <span class="mi">30</span> <span class="mi">10</span> <span class="nv">features</span> <span class="s">"sample"</span> <span class="mi">5</span> <span class="ss">:kernel-type</span> <span class="p">(</span><span class="ss">:rbf</span> <span class="nv">api/kernel-types</span><span class="p">))))</span>
 
 <span class="c1">; We get some output from the underlying svm implementation</span>
 
@@ -123,7 +127,7 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 <span class="p">(</span><span class="nf">my-policy</span> <span class="mi">8</span><span class="p">)</span>
 <span class="c1">;=&gt; 2</span>
 <span class="p">(</span><span class="nf">my-policy</span> <span class="mi">10</span><span class="p">)</span>
-<span class="c1">;=&gt; 0</span>
+<span class="c1">;=&gt; nil</span>
 </pre></div>
 
 <p>All of this code is available in <code>sample.clj</code> and can be run simply by calling:</p>
@@ -137,13 +141,39 @@ under the hood so our features are maps of increasing numbers 1..n to the featur
 <span class="p">(</span><span class="nf">my-policy</span> <span class="mi">8</span><span class="p">)</span>
 <span class="c1">;=&gt; 2</span>
 <span class="p">(</span><span class="nf">my-policy</span> <span class="mi">10</span><span class="p">)</span>
-<span class="c1">;=&gt; 0</span>
+<span class="c1">;=&gt; nil</span>
 </pre></div>
 
 <p>Now take this and build your own reinforcement learning solutions to problems. :D</p>
 
 <h2>
 <a name="changelog" class="anchor" href="#changelog"><span class="octicon octicon-link"></span></a>Changelog</h2>
+
+<h3>
+<a name="044" class="anchor" href="#044"><span class="octicon octicon-link"></span></a>0.4.4</h3>
+
+<p>Altered the generated policy so that operations are performed in parallel. The reasoning here
+is that should the policy encounter a state it has not seen and need to evaluate many actions
+the performance gain is large, whereas if a small number of actions are up for evaluation
+the performance loss will be minimal.</p>
+
+<h3>
+<a name="043" class="anchor" href="#043"><span class="octicon octicon-link"></span></a>0.4.3</h3>
+
+<p>Altered the code base so that situations in which no action exist can be handled. In this case
+the policy functions return nil. Therefore your state generator <code>sp</code> can return an empty list
+and your generative model <code>m</code> should be able to handle nil in place of action.</p>
+
+<h3>
+<a name="042" class="anchor" href="#042"><span class="octicon octicon-link"></span></a>0.4.2</h3>
+
+<p>Added a maximum iterations (mi) parameter to api. Allows the user to constrain the run
+time of the learner.</p>
+
+<h3>
+<a name="041" class="anchor" href="#041"><span class="octicon octicon-link"></span></a>0.4.1</h3>
+
+<p>The deployment to Clojars failed for 0.4.0 so I needed to push a new version.</p>
 
 <h3>
 <a name="040" class="anchor" href="#040"><span class="octicon octicon-link"></span></a>0.4.0</h3>
