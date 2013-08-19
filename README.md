@@ -103,7 +103,7 @@ Now that we have defined m, dp, sp, and features we can run approximate policy i
 (my-policy 8)
 ;=> 2
 (my-policy 10)
-;=> 0
+;=> nil
 ```
 
 All of this code is available in `sample.clj` and can be run simply by calling:
