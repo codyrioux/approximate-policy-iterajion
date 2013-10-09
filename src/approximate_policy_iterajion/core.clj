@@ -143,7 +143,7 @@
 
    fe: A function that extracts features from a `[state action]` pair `{1 feature1, 2 feature2, ...}`
 
-   id: An identifier for this run, used to persist the dataset in case of interruption. 
+   tsi: An initial training set to bootstrap the process.
 
    mi: An integer representing the maximum number of iterations to run before returning.
 
@@ -151,12 +151,10 @@
 
    Returns: A policy function that is greedy on the estimated reward.
             (policy state) ;=> action or nil if no action."
-  [m rw dp sp y k t fe id mi & options]
+  [m rw dp sp y k t fe tsi mi & options]
   (let [pi0 (partial policy fe sp)]
     (loop [pi #(rand-nth (sp %))
-           ts (let [f (clojure.java.io/file id)
-                    ds (if (.exists f) (read-string (slurp id)) #{})]
-                ds)
+           ts tsi
            tsi-1 nil
            states-1 nil
            iter mi]
@@ -184,5 +182,4 @@
               _ (apply await agents)
               qpi (apply concat (map deref agents))
               next-ts  (union ts (get-training-samples fe qpi))]
-          (spit id next-ts)
           (recur (partial pi0 (apply svm/train-model (conj options next-ts))) next-ts ts states (dec iter)))))))

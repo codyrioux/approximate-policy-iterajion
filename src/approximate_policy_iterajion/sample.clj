@@ -52,4 +52,4 @@
   "Build a function that implements our policy.
    The returned function can be called with a state and will recommend an action."
   [trajectory-count trajectory-length]
-  (api/api m reward dp sp 0.99 trajectory-count trajectory-length features "sample" 5 :kernel-type (:rbf api/kernel-types)))
+  (api/api m reward dp sp 0.99 trajectory-count trajectory-length features #{} 5 :kernel-type (:rbf api/kernel-types)))
